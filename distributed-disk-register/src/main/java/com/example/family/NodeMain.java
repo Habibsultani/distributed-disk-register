@@ -11,6 +11,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.example.family.commands.Command;
+import com.example.family.commands.CommandParser;
 import family.ChatMessage;
 import family.Empty;
 import family.FamilyServiceGrpc;
@@ -59,6 +61,13 @@ public class NodeMain {
                 startHealthChecker(registry, self);
 
                 server.awaitTermination();
+
+
+//        var store = new java.util.concurrent.ConcurrentHashMap<String, String>();
+//        var parser = new CommandParser(store);
+//
+//        Command cmd = parser.parse(lineFromTcp);
+//        String response = cmd.execute(); // OK / NOT_FOUND / ERROR
 
 
 
