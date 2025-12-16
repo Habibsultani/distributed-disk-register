@@ -1,6 +1,9 @@
+D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\Command.java
 D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\FamilyServiceImpl.java
+D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\GetCommand.java
 D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\NodeMain.java
 D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\NodeRegistry.java
+D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\SetCommand.java
 D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\grpc-java\family\FamilyServiceGrpc.java
 D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\ChatMessage.java
 D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\ChatMessageOrBuilder.java
