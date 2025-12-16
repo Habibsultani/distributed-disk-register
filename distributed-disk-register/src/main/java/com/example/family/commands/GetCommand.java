@@ -1,4 +1,4 @@
-package com.example.family;
+package com.example.family.commands;
 
 import java.util.Map;
 
