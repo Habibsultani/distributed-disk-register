@@ -30,4 +30,6 @@
 
 ![TCP SET GET Test](images/test1.jpeg)
 
+![Server Logları](images/test2.jpeg)
+
 ![Server Logları](images/test3.jpeg)
