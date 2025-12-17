@@ -1,10 +1,10 @@
 package com.example.family;
 
+import family.ChatMessage;
 import family.Empty;
 import family.FamilyServiceGrpc;
 import family.FamilyView;
 import family.NodeInfo;
-import family.ChatMessage;
 import io.grpc.stub.StreamObserver;
 
 public class FamilyServiceImpl extends FamilyServiceGrpc.FamilyServiceImplBase {
@@ -40,7 +40,7 @@ public class FamilyServiceImpl extends FamilyServiceGrpc.FamilyServiceImplBase {
         responseObserver.onCompleted();
     }
 
-    // Diğer düğümlerden broadcast mesajı geldiğinde
+    
     @Override
     public void receiveChat(ChatMessage request, StreamObserver<Empty> responseObserver) {
         System.out.println("💬 Incoming message:");
