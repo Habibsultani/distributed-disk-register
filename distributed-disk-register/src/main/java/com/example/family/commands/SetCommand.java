@@ -23,7 +23,7 @@ public class SetCommand implements Command {
         store.put(id, value);
 
         try {
-            Path messagesDir = Path.of("messages");
+            Path messagesDir = Path.of("distributed-disk-register/messages");
             Files.createDirectories(messagesDir);
 
             Path file = messagesDir.resolve(id + ".msg");
