@@ -45,3 +45,9 @@ service FamilyService {
 
   rpc ReceiveChat (ChatMessage) returns (Empty);
 }
+
+// === Stage 3: Storage gRPC service interface ===
+service StorageService {
+  rpc Store (StoredMessage) returns (StoreResult);
+  rpc Retrieve (MessageId) returns (StoredMessage);
+}

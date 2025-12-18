@@ -70,8 +70,11 @@ public final class FamilyProto {
       "amilyService\022,\n\004Join\022\020.family.NodeInfo\032\022" +
       ".family.FamilyView\022.\n\tGetFamily\022\r.family" +
       ".Empty\032\022.family.FamilyView\0221\n\013ReceiveCha" +
-      "t\022\023.family.ChatMessage\032\r.family.EmptyB\027\n" +
-      "\006familyB\013FamilyProtoP\001b\006proto3"
+      "t\022\023.family.ChatMessage\032\r.family.Empty2{\n" +
+      "\016StorageService\0223\n\005Store\022\025.family.Stored" +
+      "Message\032\023.family.StoreResult\0224\n\010Retrieve" +
+      "\022\021.family.MessageId\032\025.family.StoredMessa" +
+      "geB\027\n\006familyB\013FamilyProtoP\001b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
