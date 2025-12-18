@@ -42,10 +42,12 @@ public class NodeMain {
 
         NodeRegistry registry = new NodeRegistry();
         FamilyServiceImpl service = new FamilyServiceImpl(registry, self);
+        StorageServiceImpl storageService = new StorageServiceImpl(STORE);
 
         Server server = ServerBuilder
                 .forPort(port)
                 .addService(service)
+                .addService(storageService)
                 .build()
                 .start();
 

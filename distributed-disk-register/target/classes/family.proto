@@ -24,9 +24,30 @@ message ChatMessage {
   int64 timestamp = 4;
 }
 
+// Storage protocol messages (Stage 3)
+message StoredMessage {
+  int32 id = 1;
+  string text = 2;
+}
+
+message MessageId {
+  int32 id = 1;
+}
+
+message StoreResult {
+  bool ok = 1;        // başarılıysa true
+  string error = 2;   // başarısızsa sebep (ok=false iken)
+}
+
 service FamilyService {
   rpc Join (NodeInfo) returns (FamilyView);
   rpc GetFamily (Empty) returns (FamilyView);
 
   rpc ReceiveChat (ChatMessage) returns (Empty);
+}
+
+// === Stage 3: Storage gRPC service interface ===
+service StorageService {
+  rpc Store (StoredMessage) returns (StoreResult);
+  rpc Retrieve (MessageId) returns (StoredMessage);
 }
