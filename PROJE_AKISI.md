@@ -162,9 +162,14 @@ Members:
 
 ---
 
-## 3. Aşama – gRPC Storage (Bitti ✅)
+## 3. Aşama – gRPC Mesaj Modeli (Bitti ✅)
 
-**Amaç:** Lider/üyeler arası protobuf/gRPC üzerinden disk-backed mesaj kaydı (dağıtık replika henüz yok).
+**Amaç:**
+
+* [x] `.proto` dosyasında StoredMessage tanımı eklenmeli.
+* [x] Java tarafında mesaj temsilini Protobuf (StoredMessage, MessageId, StoreResult) ile kullanılmalı.
+* [x] gRPC servis iskeleti oluşturuldu: StorageService { Store(StoredMessage) returns (StoreResult); Retrieve(MessageId) returns (StoredMessage) }.
+* [x] Henüz dağıtık replika yok; amaç gRPC fonksiyonunu ayağa kaldırmak.
 
 ### Görev Dağılımı
 
