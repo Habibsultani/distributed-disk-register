@@ -57,13 +57,13 @@
 
 ### Görev Dağılımı
 
-* **Habib**
+* **Haris**
   * [x] SET komutu için disk yazma (write) mantığının uygulanması
 
-* **Abdullah**
+* **Habib**
   * [x] GET komutu için disk okuma (read) mantığının uygulanması
 
-* **Haris**
+* **Abdullah**
   * [x] Buffered ve unbuffered disk IO yaklaşımlarının araştırılması
 
 * **Rasha**
@@ -159,6 +159,8 @@ Members:
  - 127.0.0.1:5555 (me)
 ======================================
 ```
+
+---
 
 
 
