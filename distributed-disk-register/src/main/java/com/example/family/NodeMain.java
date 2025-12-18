@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -30,6 +31,7 @@ public class NodeMain {
 
     private static final int START_PORT = 5555;
     private static final int PRINT_INTERVAL_SECONDS = 10;
+    private static final int TOLERANCE = ToleranceConfig.load(Path.of("tolerance.conf"));
 
     public static void main(String[] args) throws Exception {
         String host = "127.0.0.1";
@@ -52,6 +54,7 @@ public class NodeMain {
                 .start();
 
         System.out.printf("Node started on %s:%d%n", host, port);
+        System.out.printf("Configured tolerance level: %d%n", TOLERANCE);
 
         // Eğer bu ilk node ise (port 5555), TCP 6666'da text dinlesin
         if (port == START_PORT) {
