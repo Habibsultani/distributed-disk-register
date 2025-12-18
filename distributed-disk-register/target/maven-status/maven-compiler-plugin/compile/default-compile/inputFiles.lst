@@ -6,7 +6,9 @@ D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\FamilyServiceImpl.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\NodeMain.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\NodeRegistry.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\StorageServiceImpl.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\grpc-java\family\FamilyServiceGrpc.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\grpc-java\family\StorageServiceGrpc.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\ChatMessage.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\ChatMessageOrBuilder.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\Empty.java
@@ -14,5 +16,11 @@ D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\FamilyProto.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\FamilyView.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\FamilyViewOrBuilder.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\MessageId.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\MessageIdOrBuilder.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\NodeInfo.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\NodeInfoOrBuilder.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\StoredMessage.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\StoredMessageOrBuilder.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\StoreResult.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\StoreResultOrBuilder.java
