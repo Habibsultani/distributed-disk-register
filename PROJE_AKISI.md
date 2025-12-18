@@ -162,27 +162,27 @@ Members:
 
 ---
 
-## 3. AYama ƒ?" gRPC Storage (Bitti ƒo.)
+## 3. Aşama – gRPC Storage (Bitti ✅)
 
-**AmaA:** Lider/üyeler arası protobuf/gRPC üzerinden disk-backed mesaj kaydı (daŽYŽñtŽñk replika henA¬z yok).
+**Amaç:** Lider/üyeler arası protobuf/gRPC üzerinden disk-backed mesaj kaydı (dağıtık replika henüz yok).
 
-### GArev DaŽYŽñlŽñmŽñ
+### Görev Dağılımı
 
 * **Abdullah**
-  * [x] Storage protobuf mesajlarŽñ (StoredMessage, MessageId, StoreResult)
+  * [x] Storage protobuf mesajları (StoredMessage, MessageId, StoreResult)
 
 * **Rasha**
-  * [x] StorageService gRPC arayA¬zA¬ (Store, Retrieve RPC)
+  * [x] StorageService gRPC arayüzü (Store, Retrieve RPC)
 
 * **Habib**
   * [x] StorageService server iskeleti (StorageServiceImpl, disk-backed)
 
 * **Haris**
-  * [x] gRPC storage testi ve dokA¬m (Stage 3)
+  * [x] gRPC storage testi ve dokümantasyon (Stage 3)
 
 ### Kod/Proto Durumu
 
-* `family.proto`: StoredMessage, MessageId, StoreResult + StorageService { Store, Retrieve } (tek node iAin)
+* `family.proto`: StoredMessage, MessageId, StoreResult + StorageService { Store, Retrieve } (tek node için)
 * `StorageServiceImpl`: `Store` RPC dosyaya (`messages/<id>.msg`) ve in-memory store'a yazar, `Retrieve` RPC dosyadan okur/yoksa NOT_FOUND.
 * `NodeMain`: gRPC server'a StorageService ekli (FamilyService ile birlikte).
 
@@ -193,7 +193,7 @@ Members:
   grpcurl -plaintext -proto src/main/proto/family.proto \
     -d '{"id":42,"text":"hello from curl"}' 127.0.0.1:5556 family.StorageService/Store
   ```
-  Beklenen: `{"ok":true}` ve `messages/42.msg` oluYur.
+  Beklenen: `{"ok":true}` ve `messages/42.msg` oluşur.
 
 * Retrieve:
   ```bash
@@ -211,7 +211,7 @@ Members:
 
 ### Notlar
 
-* Bu aYamada daŽYŽñtŽñk replika yok; tolerans ve replication Stage 4+ iAin beklemede.
+* Bu aşamada dağıtık replika yok; tolerans/replication Stage 4+ için beklemede.
 
 ---
 
