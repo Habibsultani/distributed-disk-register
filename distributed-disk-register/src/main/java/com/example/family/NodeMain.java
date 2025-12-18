@@ -23,9 +23,6 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 
-
-/// this is the second test
-
 public class NodeMain {
 
     private static final java.util.Map<String, String> STORE =
@@ -64,15 +61,7 @@ public class NodeMain {
         startHealthChecker(registry, self);
 
         server.awaitTermination();
-
-
-//        var store = new java.util.concurrent.ConcurrentHashMap<String, String>();
-//        var parser = new CommandParser(store);
-//
-//        Command cmd = parser.parse(lineFromTcp);
-//        String response = cmd.execute(); // OK / NOT_FOUND / ERROR
-
-
+        
     }
 
     private static void startLeaderTextListener(NodeRegistry registry, NodeInfo self) {
