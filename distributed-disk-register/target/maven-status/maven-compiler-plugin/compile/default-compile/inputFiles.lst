@@ -1,16 +1,18 @@
-D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\Command.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\FamilyServiceImpl.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\GetCommand.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\NodeMain.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\NodeRegistry.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\SetCommand.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\grpc-java\family\FamilyServiceGrpc.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\ChatMessage.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\ChatMessageOrBuilder.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\Empty.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\EmptyOrBuilder.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\FamilyProto.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\FamilyView.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\FamilyViewOrBuilder.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\NodeInfo.java
-D:\JavaP\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\NodeInfoOrBuilder.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\commands\Command.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\commands\CommandParser.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\commands\GetCommand.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\commands\InvalidCommand.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\commands\SetCommand.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\FamilyServiceImpl.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\NodeMain.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\NodeRegistry.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\grpc-java\family\FamilyServiceGrpc.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\ChatMessage.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\ChatMessageOrBuilder.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\Empty.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\EmptyOrBuilder.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\FamilyProto.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\FamilyView.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\FamilyViewOrBuilder.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\NodeInfo.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\NodeInfoOrBuilder.java
