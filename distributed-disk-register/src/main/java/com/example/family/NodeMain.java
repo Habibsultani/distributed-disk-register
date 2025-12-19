@@ -139,7 +139,7 @@ public class NodeMain {
 
                             // ARTIK 1..7: tolerance kadar üye
                             int need = TOLERANCE; // 1..7
-                            List<NodeInfo> targets = selectTargets(registry, self, need);
+                            List<NodeInfo> targets = registry.selectReplicas(self, need, id);
 
                             if (targets.size() < need) {
                                 finalResponse = "ERROR";
