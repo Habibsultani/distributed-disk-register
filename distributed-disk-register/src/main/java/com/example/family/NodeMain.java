@@ -7,6 +7,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -14,26 +15,41 @@ import java.util.concurrent.TimeUnit;
 
 import com.example.family.commands.Command;
 import com.example.family.commands.CommandParser;
-import family.ChatMessage;
+
 import family.Empty;
 import family.FamilyServiceGrpc;
 import family.FamilyView;
+import family.MessageId;
 import family.NodeInfo;
+import family.StoredMessage;
+import family.StoreResult;
+import family.StorageServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.StatusRuntimeException;
 
 public class NodeMain {
 
+    // id -> bu mesaj hangi node'larda var
+    private static final java.util.concurrent.ConcurrentHashMap<Integer, java.util.List<NodeInfo>>
+            MESSAGE_TO_MEMBERS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    // TCP SET/GET (Stage-1) için store; sende disk de yazılıyor diyorsun (SetCommand içinde)
     private static final java.util.Map<String, String> STORE =
             new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final int START_PORT = 5555;
     private static final int PRINT_INTERVAL_SECONDS = 10;
-    private static final int TOLERANCE = ToleranceConfig.load(Path.of("tolerance.conf"));
+
+    private static final int TOLERANCE = ToleranceConfig.load(Path.of("distributed-disk-register/tolerance.conf"));
 
     public static void main(String[] args) throws Exception {
+        System.out.println("Working dir: " + java.nio.file.Paths.get("").toAbsolutePath());
+        System.out.println("tolerance.conf exists? " + java.nio.file.Files.exists(java.nio.file.Path.of("tolerance.conf")));
+
+
         String host = "127.0.0.1";
         int port = findFreePort(START_PORT);
 
@@ -44,6 +60,8 @@ public class NodeMain {
 
         NodeRegistry registry = new NodeRegistry();
         FamilyServiceImpl service = new FamilyServiceImpl(registry, self);
+
+        // gRPC storage server (disk-backed implementasyon sende mevcut)
         StorageServiceImpl storageService = new StorageServiceImpl(STORE);
 
         Server server = ServerBuilder
@@ -56,7 +74,7 @@ public class NodeMain {
         System.out.printf("Node started on %s:%d%n", host, port);
         System.out.printf("Configured tolerance level: %d%n", TOLERANCE);
 
-        // Eğer bu ilk node ise (port 5555), TCP 6666'da text dinlesin
+        // Sadece leader TCP 6666 dinler
         if (port == START_PORT) {
             startLeaderTextListener(registry, self);
         }
@@ -66,11 +84,9 @@ public class NodeMain {
         startHealthChecker(registry, self);
 
         server.awaitTermination();
-        
     }
 
     private static void startLeaderTextListener(NodeRegistry registry, NodeInfo self) {
-        // Sadece lider (5555 portlu node) bu methodu çağırmalı
         new Thread(() -> {
             try (ServerSocket serverSocket = new ServerSocket(6666)) {
                 System.out.printf("Leader listening for text on TCP %s:%d%n",
@@ -102,59 +118,205 @@ public class NodeMain {
                 String text = line.trim();
                 if (text.isEmpty()) continue;
 
-                Command cmd = parser.parse(text);
-                String response = cmd.execute(); // OK / NOT_FOUND / ERROR
+                boolean isLeader = (self.getPort() == START_PORT);
 
-                out.println(response); // response'u client'a gönder
-                System.out.println("TCP> " + text + "  =>  " + response);
+                // Default: eski davranış (local execute)
+                Command cmd = parser.parse(text);
+                String localResponse = cmd.execute(); // OK / NOT_FOUND / ERROR
+
+                String finalResponse = localResponse;
+
+                // =========================
+                // STAGE-4: Leader SET replication (tolerance 1/2)
+                // =========================
+                if (isLeader && localResponse.equals("OK") && text.toUpperCase().startsWith("SET ")) {
+                    // SET <id> <message> ayrıştır
+                    String[] parts = text.split("\\s+", 3);
+                    if (parts.length == 3) {
+                        try {
+                            int id = Integer.parseInt(parts[1]);
+                            String message = parts[2];
+
+                            // mapping: leader kendinde var
+                            trackStoredAt(id, self);
+
+                            // tolerance sadece 1 veya 2 olarak ele al
+                            int need = (TOLERANCE >= 2) ? 2 : 1;
+
+                            List<NodeInfo> targets = selectTargets(registry, self, need);
+
+                            // Yeterli üye yoksa: ERROR (task gereği tolerance kadar üye seçilmeli)
+                            if (targets.size() < need) {
+                                finalResponse = "ERROR";
+                                System.out.println("[REPL] Not enough members. need=" + need +
+                                        " available=" + targets.size());
+                            } else {
+                                // Remote store RPC (hepsi başarılı olmalı)
+                                boolean allOk = replicateStoreToTargets(id, message, targets);
+
+                                finalResponse = allOk ? "OK" : "ERROR";
+                                printMappingFor(id);
+                            }
+
+                        } catch (NumberFormatException e) {
+                            // parser invalid yakalamış olmalı; localResponse zaten ERROR olmalı
+                        }
+                    }
+                }
+
+                // =========================
+                // STAGE-4: Leader GET fallback (local NOT_FOUND ise mapping’ten oku)
+                // =========================
+                if (isLeader && "NOT_FOUND".equals(localResponse) && text.toUpperCase().startsWith("GET ")) {
+                    String[] parts = text.split("\\s+");
+                    if (parts.length == 2) {
+                        try {
+                            int id = Integer.parseInt(parts[1]);
+
+                            String fromMember = retrieveFromMembersUsingMapping(id, self);
+                            if (fromMember != null) {
+                                finalResponse = fromMember;
+                            } else {
+                                finalResponse = "NOT_FOUND";
+                            }
+
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                }
+
+                // Client’a FINAL cevabı gönder
+                out.println(finalResponse);
+                System.out.println("TCP> " + text + "  =>  " + finalResponse);
             }
 
         } catch (IOException e) {
             System.err.println("TCP client handler error: " + e.getMessage());
         } finally {
-            try {
-                client.close();
-            } catch (IOException ignored) {
-            }
+            try { client.close(); } catch (IOException ignored) {}
         }
     }
 
+    // ===== Replication helpers =====
 
-    private static void broadcastToFamily(NodeRegistry registry,
-                                          NodeInfo self,
-                                          ChatMessage msg) {
-
+    private static List<NodeInfo> selectTargets(NodeRegistry registry, NodeInfo self, int need) {
         List<NodeInfo> members = registry.snapshot();
+        List<NodeInfo> candidates = new ArrayList<>();
 
         for (NodeInfo n : members) {
-            // Kendimize tekrar gönderme
-            if (n.getHost().equals(self.getHost()) && n.getPort() == self.getPort()) {
-                continue;
+            if (sameMember(n, self)) continue;
+            candidates.add(n);
+        }
+
+        // En basit seçim: ilk N üye
+        if (candidates.size() <= need) return candidates;
+        return candidates.subList(0, need);
+    }
+
+    private static boolean replicateStoreToTargets(int id, String message, List<NodeInfo> targets) {
+        StoredMessage sm = StoredMessage.newBuilder()
+                .setId(id)
+                .setText(message)
+                .build();
+
+        boolean allOk = true;
+
+        for (NodeInfo t : targets) {
+            boolean ok = storeOnMember(t, sm);
+            if (ok) {
+                trackStoredAt(id, t);
+            } else {
+                allOk = false;
+            }
+        }
+
+        return allOk;
+    }
+
+    private static boolean storeOnMember(NodeInfo member, StoredMessage msg) {
+        ManagedChannel channel = null;
+        try {
+            channel = ManagedChannelBuilder
+                    .forAddress(member.getHost(), member.getPort())
+                    .usePlaintext()
+                    .build();
+
+            StorageServiceGrpc.StorageServiceBlockingStub stub =
+                    StorageServiceGrpc.newBlockingStub(channel);
+
+            StoreResult res = stub.store(msg);
+            boolean ok = res.getOk();
+
+            if (!ok) {
+                System.out.println("[REPL] Store failed on " + member.getHost() + ":" + member.getPort()
+                        + " error=" + res.getError());
+            } else {
+                System.out.println("[REPL] Store OK on " + member.getHost() + ":" + member.getPort());
             }
 
-            ManagedChannel channel = null;
-            try {
-                channel = ManagedChannelBuilder
-                        .forAddress(n.getHost(), n.getPort())
-                        .usePlaintext()
-                        .build();
+            return ok;
 
-                FamilyServiceGrpc.FamilyServiceBlockingStub stub =
-                        FamilyServiceGrpc.newBlockingStub(channel);
-
-                stub.receiveChat(msg);
-
-                System.out.printf("Broadcasted message to %s:%d%n", n.getHost(), n.getPort());
-
-            } catch (Exception e) {
-                System.err.printf("Failed to send to %s:%d (%s)%n",
-                        n.getHost(), n.getPort(), e.getMessage());
-            } finally {
-                if (channel != null) channel.shutdownNow();
-            }
+        } catch (StatusRuntimeException e) {
+            System.out.println("[REPL] Store RPC error on " + member.getHost() + ":" + member.getPort()
+                    + " status=" + e.getStatus());
+            return false;
+        } catch (Exception e) {
+            System.out.println("[REPL] Store exception on " + member.getHost() + ":" + member.getPort()
+                    + " msg=" + e.getMessage());
+            return false;
+        } finally {
+            if (channel != null) channel.shutdownNow();
         }
     }
 
+    private static String retrieveFromMembersUsingMapping(int id, NodeInfo self) {
+        List<NodeInfo> holders = MESSAGE_TO_MEMBERS.get(id);
+        if (holders == null || holders.isEmpty()) return null;
+
+        // Leader kendini de tutuyor olabilir; kendini atla
+        for (NodeInfo m : holders) {
+            if (sameMember(m, self)) continue;
+
+            String text = retrieveFromMember(m, id);
+            if (text != null) return text;
+        }
+        return null;
+    }
+
+    private static String retrieveFromMember(NodeInfo member, int id) {
+        ManagedChannel channel = null;
+        try {
+            channel = ManagedChannelBuilder
+                    .forAddress(member.getHost(), member.getPort())
+                    .usePlaintext()
+                    .build();
+
+            StorageServiceGrpc.StorageServiceBlockingStub stub =
+                    StorageServiceGrpc.newBlockingStub(channel);
+
+            StoredMessage got = stub.retrieve(MessageId.newBuilder().setId(id).build());
+
+            // Basit kontrol: text boşsa null say (isterseniz değiştirirsiniz)
+            String text = got.getText();
+            if (text == null || text.isEmpty()) return null;
+
+            System.out.println("[GET] Retrieved from " + member.getHost() + ":" + member.getPort());
+            return text;
+
+        } catch (StatusRuntimeException e) {
+            System.out.println("[GET] Retrieve RPC error on " + member.getHost() + ":" + member.getPort()
+                    + " status=" + e.getStatus());
+            return null;
+        } catch (Exception e) {
+            System.out.println("[GET] Retrieve exception on " + member.getHost() + ":" + member.getPort()
+                    + " msg=" + e.getMessage());
+            return null;
+        } finally {
+            if (channel != null) channel.shutdownNow();
+        }
+    }
+
+    // ===== Discovery / health =====
 
     private static int findFreePort(int startPort) {
         int port = startPort;
@@ -207,7 +369,7 @@ public class NodeMain {
             System.out.println("Members:");
 
             for (NodeInfo n : members) {
-                boolean isMe = n.getHost().equals(self.getHost()) && n.getPort() == self.getPort();
+                boolean isMe = sameMember(n, self);
                 System.out.printf(" - %s:%d%s%n",
                         n.getHost(),
                         n.getPort(),
@@ -224,10 +386,7 @@ public class NodeMain {
             List<NodeInfo> members = registry.snapshot();
 
             for (NodeInfo n : members) {
-                // Kendimizi kontrol etmeyelim
-                if (n.getHost().equals(self.getHost()) && n.getPort() == self.getPort()) {
-                    continue;
-                }
+                if (sameMember(n, self)) continue;
 
                 ManagedChannel channel = null;
                 try {
@@ -239,23 +398,60 @@ public class NodeMain {
                     FamilyServiceGrpc.FamilyServiceBlockingStub stub =
                             FamilyServiceGrpc.newBlockingStub(channel);
 
-                    // Ping gibi kullanıyoruz: cevap bizi ilgilendirmiyor,
-                    // sadece RPC'nin hata fırlatmaması önemli.
                     stub.getFamily(Empty.newBuilder().build());
 
                 } catch (Exception e) {
-                    // Bağlantı yok / node ölmüş → listeden çıkar
                     System.out.printf("Node %s:%d unreachable, removing from family%n",
                             n.getHost(), n.getPort());
                     registry.remove(n);
-                } finally {
-                    if (channel != null) {
-                        channel.shutdownNow();
+
+                    // leader mapping temizliği
+                    if (self.getPort() == START_PORT) {
+                        removeMemberFromAllMappings(n);
                     }
+                } finally {
+                    if (channel != null) channel.shutdownNow();
                 }
             }
 
-        }, 5, 10, TimeUnit.SECONDS); // 5 sn sonra başla, 10 sn'de bir kontrol et
+        }, 5, 10, TimeUnit.SECONDS);
     }
 
+    // ===== Mapping utils =====
+
+    private static void trackStoredAt(int id, NodeInfo member) {
+        MESSAGE_TO_MEMBERS.compute(id, (k, v) -> {
+            if (v == null) v = new java.util.concurrent.CopyOnWriteArrayList<>();
+            boolean exists = v.stream().anyMatch(m -> sameMember(m, member));
+            if (!exists) v.add(member);
+            return v;
+        });
+    }
+
+    private static void removeMemberFromAllMappings(NodeInfo dead) {
+        for (var entry : MESSAGE_TO_MEMBERS.entrySet()) {
+            List<NodeInfo> list = entry.getValue();
+            list.removeIf(m -> sameMember(m, dead));
+            if (list.isEmpty()) {
+                MESSAGE_TO_MEMBERS.remove(entry.getKey(), list);
+            }
+        }
+    }
+
+    private static boolean sameMember(NodeInfo a, NodeInfo b) {
+        return a.getHost().equals(b.getHost()) && a.getPort() == b.getPort();
+    }
+
+    private static void printMappingFor(int id) {
+        var list = MESSAGE_TO_MEMBERS.get(id);
+        if (list == null || list.isEmpty()) {
+            System.out.println("[MAPPING] id=" + id + " -> (empty)");
+            return;
+        }
+        String members = list.stream()
+                .map(m -> m.getHost() + ":" + m.getPort())
+                .reduce((x, y) -> x + ", " + y)
+                .orElse("");
+        System.out.println("[MAPPING] id=" + id + " -> " + members);
+    }
 }
