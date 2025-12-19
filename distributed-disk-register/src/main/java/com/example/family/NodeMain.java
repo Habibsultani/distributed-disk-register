@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -36,20 +38,17 @@ public class NodeMain {
     private static final java.util.concurrent.ConcurrentHashMap<Integer, java.util.List<NodeInfo>>
             MESSAGE_TO_MEMBERS = new java.util.concurrent.ConcurrentHashMap<>();
 
-    // TCP SET/GET (Stage-1) için store; sende disk de yazılıyor diyorsun (SetCommand içinde)
+    // TCP SET/GET (Stage-1) için store
     private static final java.util.Map<String, String> STORE =
             new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final int START_PORT = 5555;
     private static final int PRINT_INTERVAL_SECONDS = 10;
 
+    // tolerance.conf çalışma dizininde (pom.xml ile aynı yerde) olmalı
     private static final int TOLERANCE = ToleranceConfig.load(Path.of("distributed-disk-register/tolerance.conf"));
 
     public static void main(String[] args) throws Exception {
-        System.out.println("Working dir: " + java.nio.file.Paths.get("").toAbsolutePath());
-        System.out.println("tolerance.conf exists? " + java.nio.file.Files.exists(java.nio.file.Path.of("tolerance.conf")));
-
-
         String host = "127.0.0.1";
         int port = findFreePort(START_PORT);
 
@@ -89,8 +88,7 @@ public class NodeMain {
     private static void startLeaderTextListener(NodeRegistry registry, NodeInfo self) {
         new Thread(() -> {
             try (ServerSocket serverSocket = new ServerSocket(6666)) {
-                System.out.printf("Leader listening for text on TCP %s:%d%n",
-                        self.getHost(), 6666);
+                System.out.printf("Leader listening for text on TCP %s:%d%n", self.getHost(), 6666);
 
                 while (true) {
                     Socket client = serverSocket.accept();
@@ -119,6 +117,7 @@ public class NodeMain {
                 if (text.isEmpty()) continue;
 
                 boolean isLeader = (self.getPort() == START_PORT);
+                String upper = text.toUpperCase();
 
                 // Default: eski davranış (local execute)
                 Command cmd = parser.parse(text);
@@ -129,8 +128,7 @@ public class NodeMain {
                 // =========================
                 // STAGE-4: Leader SET replication (tolerance 1/2)
                 // =========================
-                if (isLeader && localResponse.equals("OK") && text.toUpperCase().startsWith("SET ")) {
-                    // SET <id> <message> ayrıştır
+                if (isLeader && "OK".equals(localResponse) && upper.startsWith("SET ")) {
                     String[] parts = text.split("\\s+", 3);
                     if (parts.length == 3) {
                         try {
@@ -140,48 +138,55 @@ public class NodeMain {
                             // mapping: leader kendinde var
                             trackStoredAt(id, self);
 
-                            // tolerance sadece 1 veya 2 olarak ele al
                             int need = (TOLERANCE >= 2) ? 2 : 1;
-
                             List<NodeInfo> targets = selectTargets(registry, self, need);
 
-                            // Yeterli üye yoksa: ERROR (task gereği tolerance kadar üye seçilmeli)
                             if (targets.size() < need) {
                                 finalResponse = "ERROR";
                                 System.out.println("[REPL] Not enough members. need=" + need +
                                         " available=" + targets.size());
                             } else {
-                                // Remote store RPC (hepsi başarılı olmalı)
                                 boolean allOk = replicateStoreToTargets(id, message, targets);
-
                                 finalResponse = allOk ? "OK" : "ERROR";
                                 printMappingFor(id);
                             }
 
-                        } catch (NumberFormatException e) {
-                            // parser invalid yakalamış olmalı; localResponse zaten ERROR olmalı
+                        } catch (NumberFormatException ignored) {
+                            // parser zaten invalid yakalamış olmalı
                         }
+                    } else {
+                        finalResponse = "ERROR";
                     }
                 }
 
                 // =========================
-                // STAGE-4: Leader GET fallback (local NOT_FOUND ise mapping’ten oku)
+                // STAGE-4: Leader GET (hocanın istediği gibi)
+                // 1) Önce leader kendi diskinden oku
+                // 2) Yoksa mapping'deki üyelerden sırayla Retrieve et
                 // =========================
-                if (isLeader && "NOT_FOUND".equals(localResponse) && text.toUpperCase().startsWith("GET ")) {
+                if (isLeader && upper.startsWith("GET ")) {
                     String[] parts = text.split("\\s+");
                     if (parts.length == 2) {
                         try {
                             int id = Integer.parseInt(parts[1]);
 
-                            String fromMember = retrieveFromMembersUsingMapping(id, self);
-                            if (fromMember != null) {
-                                finalResponse = fromMember;
+                            // 1) Diskten oku
+                            String localDisk = readFromLocalDisk(id);
+                            if (localDisk != null) {
+                                System.out.println("[GET] Local disk hit id=" + id);
+                                finalResponse = localDisk;
                             } else {
-                                finalResponse = "NOT_FOUND";
+                                System.out.println("[GET] Local disk miss id=" + id + ", trying members...");
+                                // 2) Üyelerden sırayla dene (ilk cevap veren)
+                                String fromMember = retrieveFromMembersUsingMapping(id, self);
+                                finalResponse = (fromMember != null) ? fromMember : "NOT_FOUND";
                             }
 
-                        } catch (NumberFormatException ignored) {
+                        } catch (NumberFormatException e) {
+                            finalResponse = "ERROR";
                         }
+                    } else {
+                        finalResponse = "ERROR";
                     }
                 }
 
@@ -193,7 +198,10 @@ public class NodeMain {
         } catch (IOException e) {
             System.err.println("TCP client handler error: " + e.getMessage());
         } finally {
-            try { client.close(); } catch (IOException ignored) {}
+            try {
+                client.close();
+            } catch (IOException ignored) {
+            }
         }
     }
 
@@ -208,7 +216,6 @@ public class NodeMain {
             candidates.add(n);
         }
 
-        // En basit seçim: ilk N üye
         if (candidates.size() <= need) return candidates;
         return candidates.subList(0, need);
     }
@@ -273,7 +280,6 @@ public class NodeMain {
         List<NodeInfo> holders = MESSAGE_TO_MEMBERS.get(id);
         if (holders == null || holders.isEmpty()) return null;
 
-        // Leader kendini de tutuyor olabilir; kendini atla
         for (NodeInfo m : holders) {
             if (sameMember(m, self)) continue;
 
@@ -296,7 +302,6 @@ public class NodeMain {
 
             StoredMessage got = stub.retrieve(MessageId.newBuilder().setId(id).build());
 
-            // Basit kontrol: text boşsa null say (isterseniz değiştirirsiniz)
             String text = got.getText();
             if (text == null || text.isEmpty()) return null;
 
@@ -313,6 +318,22 @@ public class NodeMain {
             return null;
         } finally {
             if (channel != null) channel.shutdownNow();
+        }
+    }
+
+    // ===== Local disk read (leader-first) =====
+
+    private static String readFromLocalDisk(int id) {
+        // Stage-2/3 formatına göre: messages/<id>.msg
+        Path p = Path.of("messages", id + ".msg");
+        try {
+            if (!Files.exists(p)) return null;
+            String s = Files.readString(p, StandardCharsets.UTF_8);
+            if (s == null) return null;
+            s = s.trim();
+            return s.isEmpty() ? null : s;
+        } catch (IOException e) {
+            return null;
         }
     }
 
@@ -405,7 +426,6 @@ public class NodeMain {
                             n.getHost(), n.getPort());
                     registry.remove(n);
 
-                    // leader mapping temizliği
                     if (self.getPort() == START_PORT) {
                         removeMemberFromAllMappings(n);
                     }
