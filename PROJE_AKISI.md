@@ -4,10 +4,6 @@
 * [x] GitHub’daki şablon repoyu **fork** et.
 * [x] GitHub’da ekip için proje oluştur, task’ları tanımla ve üyelere ata.
 * [x] TCP server için SET / GET komutlarını parse eden yapı geliştir.
-  * Örn: `Command parse(String line)` → `SetCommand` / `GetCommand`
-
-  * `SET` → `map.put(id, msg)` + `OK`
-  * `GET` → `map.get(id)` + bulunamazsa `NOT_FOUND`
 
 ### Görev Dağılımı
 
@@ -40,9 +36,7 @@
 
 **Amaç:** Disk IO, buffered/unbuffered fikrine giriş.
 
-* [x] `messages/` klasöründe her mesajı **ayrı dosyada** tut:
-
-  * Örn. `messages/42.msg` içinde sadece o mesajın içeriği
+* [x] `messages/` klasöründe her mesajı **ayrı dosyada** tut
 * [x] `SET <id> <msg>`: Diskte dosya oluştur / üzerine yaz
 * [x] `GET <id>`: İlgili dosyayı aç, içeriği oku, istemciye dön
 * [x] İki farklı IO modu araştırılabilir:
@@ -105,7 +99,7 @@ için daha hızlıdır.
 
 ### Test Kanıtları
 
-![Test 4 – Disk IO ve SET/GET Çalışma Kanıtı](images/test4.png)
+![Test 1 – Disk IO ve SET/GET Çalışma Kanıtı](images/test4.png)
 
 #### Loglar
 
@@ -220,5 +214,315 @@ Members:
 
 ---
 
+## 4. Aşama – Tolerance=1 ve 2 için Dağıtık Kayıt (Bitti ✅)
+
+**Amaç:** Hata toleransı 1 ve 2 için **temel dağıtık kayıt sistemi**.
+
+* [x] `tolerance.conf` dosyasını okuyun:
+
+  * İçinde tek satır olsun: `TOLERANCE=2`
+* [x] Lider, her SET isteğinde:
+
+  1. Gelen id+mesajı diske kaydetsin (kendi mesaj haritasına da eklesin)
+  2. Üye listesinden tolerance sayısı kadar üye seçsin:
+
+     * Tolerance=1 → 1 üye
+     * Tolerance=2 → 2 üye
+  3. Bu üyelere gRPC ile `Store(StoredMessage)` RPC’si göndersin
+  4. Hepsinden başarılı yanıt geldiyse istemciye `OK`
+  5. Bir veya daha fazlası başarısız olursa:
+
+     * Bu durumda ne yapılacağı (retry, ERROR, vb) takım tasarımına bırakılabilir
+* [x] Lider, “mesaj id → hangi üyelerde var” bilgisini bir map’te tutsun:
+
+  * `Map<Integer, List<MemberId>>`
+* [x] GET isteğinde:
+
+  * Eğer liderin kendi diskinde varsa doğrudan kendinden okusun
+  * Yoksa mesajın tutulduğu üye listesinden sırayla gRPC ile `Retrieve` isteği göndersin
+  * İlk cevap veren (ya da hayatta kalan) üyeden mesajı alıp istemciye döndürsün
+
+### Görev Dağılımı
+
+* **Habib**
+  * [x] tolerance.conf okuyucusunu kodla.
+
+* **Haris**
+  * [x] 1 ve 2 tolerans seviyeleri için replika seçimini gerçekleştir.
+
+* **Abdullah**
+  * [x] Lider (leader) düğüm üzerinde mesaj-üye eşleşmesini takip et.
+
+* **Rasha**
+  * [x] Dağıtık GET mantığını gerçekleştir.
+
+### Testler ve Test Kanıtları
+
+#### Test Senaryosu 1
+* TOLERANCE=2
+* başarılı SET + mapping + GET diskten
+* SET 200 hello yap -> GET 200 yap
+![Test Senaryosu 1 Çalışma Kanıtı](images/test5.png)
+
+##### Loglar
+
+```client outputs
+SET 200 hello
+OK
+GET 200
+hello
+```
+
+```terminal outputs
+Node started on 127.0.0.1:5555
+Configured tolerance level: 2
+Leader listening for text on TCP 127.0.0.1:6666
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T15:59:05.195287600
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+======================================
+New TCP client connected: /127.0.0.1:58061
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T15:59:15.195148400
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+======================================
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T15:59:25.195331
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+======================================
+[REPL] Store OK on 127.0.0.1:5556
+[REPL] Store OK on 127.0.0.1:5557
+[MAPPING] id=200 -> 127.0.0.1:5555, 127.0.0.1:5556, 127.0.0.1:5557
+TCP> SET 200 hello  =>  OK
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T15:59:35.197869500
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+======================================
+[GET] Local disk hit id=200
+TCP> GET 200  =>  hello
+```
+
+#### Test Senaryosu 2
+* TOLERANCE=2
+* leader’da yok -> üyeden Retrieve ile getir
+* SET 200 hello yap -> GET 200 yap -> 200.msg sil -> GET 200 yap
+![Test Senaryosu 2 Çalışma Kanıtı](images/test6.png)
+
+##### Loglar
+
+```client outputs
+SET 200 hello
+OK
+GET 200
+hello
+GET 200
+hello
+```
+
+```terminal outputs
+Node started on 127.0.0.1:5555
+Configured tolerance level: 2
+Leader listening for text on TCP 127.0.0.1:6666
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:08:43.455836500
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+======================================
+New TCP client connected: /127.0.0.1:52084
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:08:53.460467300
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+======================================
+[REPL] Store OK on 127.0.0.1:5556
+[REPL] Store OK on 127.0.0.1:5557
+[MAPPING] id=200 -> 127.0.0.1:5555, 127.0.0.1:5556, 127.0.0.1:5557
+TCP> SET 200 hello  =>  OK
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:09:03.449003100
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+======================================
+[GET] Local disk hit id=200
+TCP> GET 200  =>  hello
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:09:13.449610300
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+======================================
+[GET] Local disk miss id=200, trying members...
+[GET] Retrieved from 127.0.0.1:5556
+TCP> GET 200  =>  hello
+```
+
+#### Test Senaryosu 3
+* TOLERANCE=2
+* 1 üye down olsa bile GET çalışıyor
+* SET 200 hello yap -> 200.msg sil -> Üyelerden birini kapat -> GET 200 yap
+![Test Senaryosu 3 Çalışma Kanıtı](images/test7.png)
+
+##### Loglar
+
+```client outputs
+SET 200 hello
+OK
+GET 200
+hello
+```
+
+```terminal outputs
+Node started on 127.0.0.1:5555
+Configured tolerance level: 2
+Leader listening for text on TCP 127.0.0.1:6666
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:18:10.262213800
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+======================================
+New TCP client connected: /127.0.0.1:50749
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:18:20.254065100
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+======================================
+[REPL] Store OK on 127.0.0.1:5556
+[REPL] Store OK on 127.0.0.1:5557
+[MAPPING] id=200 -> 127.0.0.1:5555, 127.0.0.1:5556, 127.0.0.1:5557
+TCP> SET 200 hello  =>  OK
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:18:30.247867100
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+======================================
+Node 127.0.0.1:5556 unreachable, removing from family
+[GET] Local disk miss id=200, trying members...
+[GET] Retrieved from 127.0.0.1:5557
+TCP> GET 200  =>  hello
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:18:50.247708400
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5557
+```
+
+#### Test Senaryosu 4
+* TOLERANCE=2
+* SET fail path -> ERROR
+* Üyelerden birini kapat -> SET 200 hello yap
+![Test Senaryosu 4 Çalışma Kanıtı](images/test8.png)
+
+##### Loglar
+
+```client outputs
+SET 200 hello
+ERROR
+```
+
+```terminal outputs
+Node started on 127.0.0.1:5555
+Configured tolerance level: 2
+Leader listening for text on TCP 127.0.0.1:6666
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:26:32.174110300
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+======================================
+New TCP client connected: /127.0.0.1:50595
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:26:42.167686100
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+======================================
+Node 127.0.0.1:5556 unreachable, removing from family
+[REPL] Not enough members. need=2 available=1
+TCP> SET 200 hello  =>  ERROR
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:27:02.169732
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5557
+======================================
+```
+
+#### Test Senaryosu 5
+* TOLERANCE=1
+* 1 üyeye yazıyor
+* Leader + 2 üye çalıştır -> SET 200 hello yap
+![Test Senaryosu 5 Çalışma Kanıtı](images/test9.png)
+
+##### Loglar
+
+```client outputs
+SET 200 hello
+OK
+```
+
+```terminal outputs
+Node started on 127.0.0.1:5555
+Configured tolerance level: 1
+Leader listening for text on TCP 127.0.0.1:6666
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:31:38.636905800
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+======================================
+New TCP client connected: /127.0.0.1:60696
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-19T16:31:48.628418700
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+======================================
+[REPL] Store OK on 127.0.0.1:5556
+[MAPPING] id=200 -> 127.0.0.1:5555, 127.0.0.1:5556
+TCP> SET 200 hello  =>  OK
+```
+
+---
 
 
