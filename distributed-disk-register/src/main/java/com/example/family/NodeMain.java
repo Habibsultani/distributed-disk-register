@@ -45,8 +45,8 @@ public class NodeMain {
     private static final int START_PORT = 5555;
     private static final int PRINT_INTERVAL_SECONDS = 10;
 
-    // tolerance.conf çalışma dizininde (pom.xml ile aynı yerde) olmalı
-    private static final int TOLERANCE = ToleranceConfig.load(Path.of("distributed-disk-register/tolerance.conf"));
+    private static final Path TOLERANCE_CONF_PATH = resolveToleranceConfPath();
+    private static final int TOLERANCE = normalizeTolerance(ToleranceConfig.load(TOLERANCE_CONF_PATH));
 
     public static void main(String[] args) throws Exception {
         String host = "127.0.0.1";
@@ -60,7 +60,6 @@ public class NodeMain {
         NodeRegistry registry = new NodeRegistry();
         FamilyServiceImpl service = new FamilyServiceImpl(registry, self);
 
-        // gRPC storage server (disk-backed implementasyon sende mevcut)
         StorageServiceImpl storageService = new StorageServiceImpl(STORE);
 
         Server server = ServerBuilder
@@ -88,7 +87,8 @@ public class NodeMain {
     private static void startLeaderTextListener(NodeRegistry registry, NodeInfo self) {
         new Thread(() -> {
             try (ServerSocket serverSocket = new ServerSocket(6666)) {
-                System.out.printf("Leader listening for text on TCP %s:%d%n", self.getHost(), 6666);
+                System.out.printf("Leader listening for text on TCP %s:%d%n",
+                        self.getHost(), 6666);
 
                 while (true) {
                     Socket client = serverSocket.accept();
@@ -117,19 +117,16 @@ public class NodeMain {
                 if (text.isEmpty()) continue;
 
                 boolean isLeader = (self.getPort() == START_PORT);
-                String upper = text.toUpperCase();
 
-                // Default: eski davranış (local execute)
                 Command cmd = parser.parse(text);
                 String localResponse = cmd.execute(); // OK / NOT_FOUND / ERROR
-
                 String finalResponse = localResponse;
 
                 // =========================
-                // STAGE-4: Leader SET replication (tolerance 1/2)
+                // SET: Leader replication (tolerance 1..7)
                 // =========================
-                if (isLeader && "OK".equals(localResponse) && upper.startsWith("SET ")) {
-                    String[] parts = text.split("\\s+", 3);
+                if (isLeader && localResponse.equals("OK") && text.toUpperCase().startsWith("SET ")) {
+                    String[] parts = text.split("\\s+", 3); // SET id msg
                     if (parts.length == 3) {
                         try {
                             int id = Integer.parseInt(parts[1]);
@@ -138,7 +135,8 @@ public class NodeMain {
                             // mapping: leader kendinde var
                             trackStoredAt(id, self);
 
-                            int need = (TOLERANCE >= 2) ? 2 : 1;
+                            // ARTIK 1..7: tolerance kadar üye
+                            int need = TOLERANCE; // 1..7
                             List<NodeInfo> targets = selectTargets(registry, self, need);
 
                             if (targets.size() < need) {
@@ -152,7 +150,7 @@ public class NodeMain {
                             }
 
                         } catch (NumberFormatException ignored) {
-                            // parser zaten invalid yakalamış olmalı
+                            finalResponse = "ERROR";
                         }
                     } else {
                         finalResponse = "ERROR";
@@ -160,24 +158,18 @@ public class NodeMain {
                 }
 
                 // =========================
-                // STAGE-4: Leader GET (hocanın istediği gibi)
-                // 1) Önce leader kendi diskinden oku
-                // 2) Yoksa mapping'deki üyelerden sırayla Retrieve et
+                // GET: Leader-first disk, else members by mapping
                 // =========================
-                if (isLeader && upper.startsWith("GET ")) {
+                if (isLeader && text.toUpperCase().startsWith("GET ")) {
                     String[] parts = text.split("\\s+");
                     if (parts.length == 2) {
                         try {
                             int id = Integer.parseInt(parts[1]);
 
-                            // 1) Diskten oku
                             String localDisk = readFromLocalDisk(id);
                             if (localDisk != null) {
-                                System.out.println("[GET] Local disk hit id=" + id);
                                 finalResponse = localDisk;
                             } else {
-                                System.out.println("[GET] Local disk miss id=" + id + ", trying members...");
-                                // 2) Üyelerden sırayla dene (ilk cevap veren)
                                 String fromMember = retrieveFromMembersUsingMapping(id, self);
                                 finalResponse = (fromMember != null) ? fromMember : "NOT_FOUND";
                             }
@@ -190,7 +182,6 @@ public class NodeMain {
                     }
                 }
 
-                // Client’a FINAL cevabı gönder
                 out.println(finalResponse);
                 System.out.println("TCP> " + text + "  =>  " + finalResponse);
             }
@@ -198,14 +189,11 @@ public class NodeMain {
         } catch (IOException e) {
             System.err.println("TCP client handler error: " + e.getMessage());
         } finally {
-            try {
-                client.close();
-            } catch (IOException ignored) {
-            }
+            try { client.close(); } catch (IOException ignored) {}
         }
     }
 
-    // ===== Replication helpers =====
+    // ===== Selection =====
 
     private static List<NodeInfo> selectTargets(NodeRegistry registry, NodeInfo self, int need) {
         List<NodeInfo> members = registry.snapshot();
@@ -216,9 +204,12 @@ public class NodeMain {
             candidates.add(n);
         }
 
+        // En basit seçim: ilk N üye
         if (candidates.size() <= need) return candidates;
         return candidates.subList(0, need);
     }
+
+    // ===== Replication =====
 
     private static boolean replicateStoreToTargets(int id, String message, List<NodeInfo> targets) {
         StoredMessage sm = StoredMessage.newBuilder()
@@ -276,6 +267,8 @@ public class NodeMain {
         }
     }
 
+    // ===== GET from members =====
+
     private static String retrieveFromMembersUsingMapping(int id, NodeInfo self) {
         List<NodeInfo> holders = MESSAGE_TO_MEMBERS.get(id);
         if (holders == null || holders.isEmpty()) return null;
@@ -321,10 +314,9 @@ public class NodeMain {
         }
     }
 
-    // ===== Local disk read (leader-first) =====
+    // ===== Local disk read =====
 
     private static String readFromLocalDisk(int id) {
-        // Stage-2/3 formatına göre: messages/<id>.msg
         Path p = Path.of("messages", id + ".msg");
         try {
             if (!Files.exists(p)) return null;
@@ -473,5 +465,24 @@ public class NodeMain {
                 .reduce((x, y) -> x + ", " + y)
                 .orElse("");
         System.out.println("[MAPPING] id=" + id + " -> " + members);
+    }
+
+    // tolerance.conf dosyasını hem proje kökünde hem de iç içe klasör senaryosunda bulmaya çalışır.
+    private static Path resolveToleranceConfPath() {
+        Path p1 = Path.of("tolerance.conf");
+        if (Files.exists(p1)) return p1;
+
+        // İç içe repo senaryosu: distributed-disk-register/tolerance.conf
+        Path p2 = Path.of("distributed-disk-register", "tolerance.conf");
+        if (Files.exists(p2)) return p2;
+
+        return p1;
+    }
+
+    // Bu task için tolerance 1..7 aralığında olmalı. Dışarıdan farklı gelirse sınırla.
+    private static int normalizeTolerance(int raw) {
+        if (raw < 1) return 1;
+        if (raw > 7) return 7;
+        return raw;
     }
 }
