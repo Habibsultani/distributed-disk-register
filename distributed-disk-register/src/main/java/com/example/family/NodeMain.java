@@ -10,7 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -388,6 +390,19 @@ public class NodeMain {
                         n.getPort(),
                         isMe ? " (me)" : "");
             }
+
+            Map<NodeInfo, Integer> counts = computeMemberMessageCounts();
+            if (!counts.isEmpty()) {
+                System.out.println("Message counts:");
+                for (NodeInfo n : members) {
+                    int count = counts.getOrDefault(n, 0);
+                    System.out.printf(" - %s:%d -> %d message%s%n",
+                            n.getHost(),
+                            n.getPort(),
+                            count,
+                            (count == 1 ? "" : "s"));
+                }
+            }
             System.out.println("======================================");
         }, 3, PRINT_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
@@ -427,6 +442,21 @@ public class NodeMain {
             }
 
         }, 5, 10, TimeUnit.SECONDS);
+    }
+
+    private static Map<NodeInfo, Integer> computeMemberMessageCounts() {
+        Map<NodeInfo, Integer> counts = new HashMap<>();
+
+        for (Map.Entry<Integer, List<NodeInfo>> entry : MESSAGE_TO_MEMBERS.entrySet()) {
+            List<NodeInfo> list = entry.getValue();
+            if (list == null) continue;
+
+            for (NodeInfo n : list) {
+                counts.merge(n, 1, Integer::sum);
+            }
+        }
+
+        return counts;
     }
 
     // ===== Mapping utils =====
