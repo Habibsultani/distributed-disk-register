@@ -525,4 +525,26 @@ TCP> SET 200 hello  =>  OK
 
 ---
 
+## 5. Aşama – Hata Toleransı n (Genel Hâl) ve Load Balancing (Bitti ✅)
 
+...
+
+### Test Senaryoları ve Kanıtları
+
+#### Test Senaryosu 1
+* TOLERANCE=2
+* Görüldüğü gibi 5 üye varken mesaj (lider hariç) sadece 2 üyeye gider.
+![Test Senaryosu 1 Çalışma Kanıtı](images/test10.png)
+
+#### Test Senaryosu 2
+* TOLERANCE=3
+* Görüldüğü gibi 7 üye varken mesaj (lider hariç) sadece 3 üyeye gider.
+![Test Senaryosu 2 Çalışma Kanıtı](images/test11.png)
+
+#### Test Senaryosu 3
+* TOLERANCE=99
+* Görüldüğü gibi tolerans sayısı (1..7) arasında olması gerekir.
+  Bu Aralık dışında bir değer verilirse tolerans normalize edilir.
+![Test Senaryosu 3 Çalışma Kanıtı](images/test12.png)
+
+---
