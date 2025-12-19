@@ -32,10 +32,10 @@ public class NodeRegistry {
     }
 
     /**
-     * Selects up to {@code tolerance} replica nodes using a simple round-robin strategy.
-     * The current node (self) is excluded from the selection.
+     * Selects up to {@code tolerance} replica nodes using a deterministic hash on message id
+     * to spread load evenly across members. The current node (self) is excluded.
      */
-    public List<NodeInfo> selectReplicas(NodeInfo self, int tolerance) {
+    public List<NodeInfo> selectReplicas(NodeInfo self, int tolerance, int messageId) {
         if (tolerance <= 0) {
             return List.of();
         }
@@ -54,7 +54,7 @@ public class NodeRegistry {
 
         others.sort(Comparator.comparing(NodeInfo::getHost).thenComparingInt(NodeInfo::getPort));
 
-        int start = Math.floorMod(roundRobin.getAndIncrement(), others.size());
+        int start = Math.floorMod(messageId, others.size());
         List<NodeInfo> selection = new ArrayList<>();
 
         for (int i = 0; i < tolerance && i < others.size(); i++) {

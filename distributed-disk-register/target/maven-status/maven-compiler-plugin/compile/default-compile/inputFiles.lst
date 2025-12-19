@@ -7,6 +7,7 @@ D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\NodeMain.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\NodeRegistry.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\StorageServiceImpl.java
+D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\src\main\java\com\example\family\ToleranceConfig.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\grpc-java\family\FamilyServiceGrpc.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\grpc-java\family\StorageServiceGrpc.java
 D:\JavaP\sustem proje odevi\distributed-disk-register\distributed-disk-register\target\generated-sources\protobuf\java\family\ChatMessage.java
