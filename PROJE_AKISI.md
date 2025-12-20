@@ -527,7 +527,39 @@ TCP> SET 200 hello  =>  OK
 
 ## 5. Aşama – Hata Toleransı n (Genel Hâl) ve Load Balancing (Bitti ✅)
 
-...
+**Amaç:** Tolerance=1,2,3,…,7 için genel çözüm + dengeli dağılım.
+
+* [x] `tolerance.conf` içindeki değeri **yapılandırılabilir** hale getirin (1..7)
+* [x] Test senaryoları:
+
+  * Tolerance=2, 5 üye → her mesaj 2 üyeye gitsin
+  * Tolerance=3, 7 üye → her mesaj 3 üyeye gitsin
+* [x] Mesaj dağılımı:
+
+  * `message_id` veya **round-robin** ile üyeleri seçebilirsiniz
+  * Amaç: Çok sayıda SET sonrası üyeler arası yük mümkün olduğunca dengeli olsun
+  * Bunu ölçmek için:
+
+    * [x] Sonda her üyenin kaç mesaj sakladığını ekrana yazdıran fonksiyon ekleyin
+* [x] Test dokümantasyonu:
+
+  * 1000 SET sonrası 2 set üye için 500-500 civarı mesaj dağılımı
+  * 9000 SET sonrası iki üçlü grup için 4500-4500 civarı dağılım
+
+ ### Görev Dağılımı
+
+* **Rasha**
+  * [x] Generalize tolerance handling (1..7).
+
+* **Abdullah**
+  * [x] Implement load-balanced replica selection.
+
+* **Habib**
+  * [x] Track per-member message count.
+
+* **Haris**
+  * [x] Test load balancing and document results.
+
 
 ### Test Senaryoları ve Kanıtları
 
@@ -546,5 +578,18 @@ TCP> SET 200 hello  =>  OK
 * Görüldüğü gibi tolerans sayısı (1..7) arasında olması gerekir.
   Bu Aralık dışında bir değer verilirse tolerans normalize edilir.
 ![Test Senaryosu 3 Çalışma Kanıtı](images/test12.png)
+
+#### Test Senaryosu 4
+* TOLERANCE=2
+* Çok sayıda SET sonrası üyeler arası yük mümkün olduğunca dengeli olsun
+* 1000 SET icin
+![Test Senaryosu 3 Çalışma Kanıtı](images/senaryo_4.png)
+
+#### Test Senaryosu 5
+* TOLERANCE=3
+* Çok sayıda SET sonrası üyeler arası yük mümkün olduğunca dengeli olsun
+* 1000 SET icin
+![Test Senaryosu 3 Çalışma Kanıtı](images/senaryo_5.png)
+
 
 ---
