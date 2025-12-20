@@ -6,7 +6,7 @@ Distributed-Disk-Registery (gRPC + TCP)
 
 # Dağıtık Disk Kayıt Sistemi (gRPC + TCP, Hata Toleranslı)
 
-Bu proje, Sistem Programlama dersi kapsamında dört kişilik ekibimiz (**Rasha Muhammed Ali**, **Abdullah Fawzi Saad AL RAYYIS**, **elharis halef elhammedi** ve **Habib Sultani**) tarafından geliştirilen, gRPC + TCP tabanlı, hata toleranslı dağıtık bir mesaj/abonelik sistemi şablonudur. Lider düğüm TCP üzerinden gelen SET/GET komutlarını alır, gRPC ile replika düğümlere dağıtır, mesajları diske yazar ve tolerans değerine göre üyeler arası yükü dengeler; üyeler dinamik olarak ağa katılıp ayrılabilir ve crash senaryolarında dahi mesajları ayakta kalan kopyalardan geri okuyabilir.
+Bu proje, Sistem Programlama dersi kapsamında dört kişilik ekibimiz (**Rasha Muhammed Ali**,  **Abdullah Fawzi Saad AL RAYYIS**,  **elharis halef elhammedi**  ve **Habib Sultani**) tarafından geliştirilen, gRPC + TCP tabanlı, hata toleranslı dağıtık bir mesaj/abonelik sistemi şablonudur. Lider düğüm TCP üzerinden gelen SET/GET komutlarını alır, gRPC ile replika düğümlere dağıtır, mesajları diske yazar ve tolerans değerine göre üyeler arası yükü dengeler; üyeler dinamik olarak ağa katılıp ayrılabilir ve crash senaryolarında dahi mesajları ayakta kalan kopyalardan geri okuyabilir.
 
 ## 📁 Proje Yapısı
 
