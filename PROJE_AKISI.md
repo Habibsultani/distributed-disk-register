@@ -607,7 +607,7 @@ TCP> SET 200 hello  =>  OK
 #### Test Senaryosu 2
 * TOLERANCE=2
 * failover çalışıyor: 5557 düştükten sonra lider (5555) yine GET 87 için değeri döndürmüş.
-![Test Senaryosu 1 Çalışma Kanıtı](images/6_senaryo_1.png)
+![Test Senaryosu 1 Çalışma Kanıtı](images/6_senaryo_2.png)
 
 
 
