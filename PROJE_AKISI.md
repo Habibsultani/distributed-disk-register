@@ -615,6 +615,21 @@ TCP> SET 200 hello  =>  OK
   * Mesaj id 4501 → üye 3,5,6’da
   * 1 veya 2 üye crash olsa bile, hayatta kalan son üyeden GET yapılabiliyor mu?
 
+### Görev Dağılımı
+
+* **Habib**
+  * [x] Handle crashed members during gRPC calls.
+
+* **Haris**
+  * [x] Implement retry and failover for GET.
+
+* **Abdullah**
+  * [x] Mark dead members and update metadata.
+
+* **Rasha**
+  * [x] Simulate crashes and document recovery tests.
+
+
 ### Test Senaryoları ve Kanıtları
 
 #### Test Senaryosu 1
