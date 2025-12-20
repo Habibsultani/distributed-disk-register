@@ -591,16 +591,17 @@ TCP> SET 200 hello  =>  OK
 * 1000 SET icin
 ![Test Senaryosu 3 Çalışma Kanıtı](images/senaryo_5.png)
 
+-----------
 
 ## 6. Aşama  – Crash Senaryoları ve Recovery (Bitti ✅)
 
------------
+---
 
 ### Test Senaryoları ve Kanıtları
 
 #### Test Senaryosu 1
 * TOLERANCE=1
 * SET sonrası replikasyon olmuş, bir üye (5557) düştüğünde sağlık kontrolü onu aileden ve eşlemelerden çıkarmış, GET isteği liderdeki kopyadan başarıyla dönmüş.
-![Test Senaryosu 1 Çalışma Kanıtı](images/test10.png)
+![Test Senaryosu 1 Çalışma Kanıtı](images/6_senaryo_1.png)
 
 
