@@ -822,4 +822,7 @@ Bu projede aynı anda birden fazla istemci ve üye node ile iletişim kurulduğu
 
 Disk IO tarafında amaç, mesajların kalıcı olarak saklanmasını sağlarken gereksiz okuma/yazma maliyetlerini azaltmaktı. Bunun için GET sırasında önce leader’ın local disk’inde mesajın olup olmadığı kontrol ediliyor; local’de bulunursa doğrudan diskten okunuyor (local hit). Local’de yoksa (local miss) replication/mapping bilgisi kullanılarak üyelerden okunuyor ve gereksiz tekrar denemelerden kaçınılıyor. Dosya işlemlerinde try-with-resources yaklaşımıyla kaynaklar doğru kapatılıyor, metin okuma/yazmada UTF-8 kullanılarak tutarlı çıktı elde ediliyor. Ayrıca sistemin “mapping + failover” mantığı sayesinde, tek bir node’un diskine bağımlı kalınmıyor; bu hem performansı hem de fault-tolerance davranışını güçlendiriyor.
 
+### Code Cleanup & Refactor
+
+Code Cleanup & Refactor aşamasında hedef, mevcut kodu daha okunabilir, sürdürülebilir ve hataya dayanıklı hale getirmek: gereksiz tekrarları azaltmak, ortak işlevleri yardımcı metotlara ayırmak, hata ve istisna yönetimini tutarlı hale getirmek, adlandırmaları netleştirmek, sihirli sayıları/strings’leri sabitlere çekmek ve konfigürasyonu merkezi hale getirmek; aynı zamanda log çıktılarını standardize edip önemli yolları testlerle güvence altına almak. Bu sayede hem yeni özellik eklemek kolaylaşır hem de olası crash/failover senaryolarında sistemin davranışı daha öngörülebilir olur.
 
