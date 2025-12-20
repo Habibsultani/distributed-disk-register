@@ -173,9 +173,6 @@ public class NodeMain {
                                 finalResponse = localDisk;
                             } else {
                                 String fromMember = retrieveFromMembersUsingMapping(id, self, registry);
-                                if (fromMember == null) {
-                                    fromMember = retrieveWithFailover(id, self, registry);
-                                }
                                 finalResponse = (fromMember != null) ? fromMember : "NOT_FOUND";
                             }
 
@@ -287,22 +284,6 @@ public class NodeMain {
 
             String text = retrieveFromMember(m, id, registry);
             if (text != null) return text;
-        }
-        return null;
-    }
-
-    // === Failover: try all known members when mapping is empty or exhausted ===
-    private static String retrieveWithFailover(int id, NodeInfo self, NodeRegistry registry) {
-        List<NodeInfo> members = registry.snapshot();
-        if (members.isEmpty()) return null;
-
-        for (NodeInfo n : members) {
-            if (sameMember(n, self)) continue;
-            String text = retrieveFromMember(n, id, registry);
-            if (text != null) {
-                trackStoredAt(id, n); // update mapping for future GETs
-                return text;
-            }
         }
         return null;
     }
