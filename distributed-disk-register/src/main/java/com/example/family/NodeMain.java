@@ -146,7 +146,7 @@ public class NodeMain {
                                 System.out.println("[REPL] Not enough members. need=" + need +
                                         " available=" + targets.size());
                             } else {
-                                boolean allOk = replicateStoreToTargets(id, message, targets);
+                                boolean allOk = replicateStoreToTargets(id, message, targets, registry);
                                 finalResponse = allOk ? "OK" : "ERROR";
                                 printMappingFor(id);
                             }
@@ -172,7 +172,7 @@ public class NodeMain {
                             if (localDisk != null) {
                                 finalResponse = localDisk;
                             } else {
-                                String fromMember = retrieveFromMembersUsingMapping(id, self);
+                                String fromMember = retrieveFromMembersUsingMapping(id, self, registry);
                                 finalResponse = (fromMember != null) ? fromMember : "NOT_FOUND";
                             }
 
@@ -213,7 +213,7 @@ public class NodeMain {
 
     // ===== Replication =====
 
-    private static boolean replicateStoreToTargets(int id, String message, List<NodeInfo> targets) {
+    private static boolean replicateStoreToTargets(int id, String message, List<NodeInfo> targets, NodeRegistry registry) {
         StoredMessage sm = StoredMessage.newBuilder()
                 .setId(id)
                 .setText(message)
@@ -222,7 +222,7 @@ public class NodeMain {
         boolean allOk = true;
 
         for (NodeInfo t : targets) {
-            boolean ok = storeOnMember(t, sm);
+            boolean ok = storeOnMember(t, sm, registry);
             if (ok) {
                 trackStoredAt(id, t);
             } else {
@@ -233,7 +233,7 @@ public class NodeMain {
         return allOk;
     }
 
-    private static boolean storeOnMember(NodeInfo member, StoredMessage msg) {
+    private static boolean storeOnMember(NodeInfo member, StoredMessage msg, NodeRegistry registry) {
         ManagedChannel channel = null;
         try {
             channel = ManagedChannelBuilder
@@ -259,10 +259,14 @@ public class NodeMain {
         } catch (StatusRuntimeException e) {
             System.out.println("[REPL] Store RPC error on " + member.getHost() + ":" + member.getPort()
                     + " status=" + e.getStatus());
+            registry.remove(member);
+            removeMemberFromAllMappings(member);
             return false;
         } catch (Exception e) {
             System.out.println("[REPL] Store exception on " + member.getHost() + ":" + member.getPort()
                     + " msg=" + e.getMessage());
+            registry.remove(member);
+            removeMemberFromAllMappings(member);
             return false;
         } finally {
             if (channel != null) channel.shutdownNow();
@@ -271,20 +275,20 @@ public class NodeMain {
 
     // ===== GET from members =====
 
-    private static String retrieveFromMembersUsingMapping(int id, NodeInfo self) {
+    private static String retrieveFromMembersUsingMapping(int id, NodeInfo self, NodeRegistry registry) {
         List<NodeInfo> holders = MESSAGE_TO_MEMBERS.get(id);
         if (holders == null || holders.isEmpty()) return null;
 
         for (NodeInfo m : holders) {
             if (sameMember(m, self)) continue;
 
-            String text = retrieveFromMember(m, id);
+            String text = retrieveFromMember(m, id, registry);
             if (text != null) return text;
         }
         return null;
     }
 
-    private static String retrieveFromMember(NodeInfo member, int id) {
+    private static String retrieveFromMember(NodeInfo member, int id, NodeRegistry registry) {
         ManagedChannel channel = null;
         try {
             channel = ManagedChannelBuilder
@@ -306,10 +310,14 @@ public class NodeMain {
         } catch (StatusRuntimeException e) {
             System.out.println("[GET] Retrieve RPC error on " + member.getHost() + ":" + member.getPort()
                     + " status=" + e.getStatus());
+            registry.remove(member);
+            removeMemberFromAllMappings(member);
             return null;
         } catch (Exception e) {
             System.out.println("[GET] Retrieve exception on " + member.getHost() + ":" + member.getPort()
                     + " msg=" + e.getMessage());
+            registry.remove(member);
+            removeMemberFromAllMappings(member);
             return null;
         } finally {
             if (channel != null) channel.shutdownNow();
