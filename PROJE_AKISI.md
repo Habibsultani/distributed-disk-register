@@ -41,6 +41,26 @@ distributed-disk-register/
 
 ```
 
+## 🚀 Çalıştırma (IDE ve CLI hızlı başlangıç)
+
+- VS Code (Java Extension Pack): repo’yu aç, terminalden komutları çalıştır.
+- IntelliJ IDEA: `pom.xml` ile aç, Maven import sonrası Run/Debug config olarak `com.example.family.NodeMain` seçip çalıştır; ek terminallerde aynı komutla üyeleri başlat.
+
+Adımlar:
+1) Derle: `mvn clean compile`
+2) Lideri başlat: `mvn exec:java -Dexec.mainClass=com.example.family.NodeMain` (port 5555, TCP 6666 dinler)
+3) Başka terminallerde aynı komutla üyeleri başlat (5556, 5557… otomatik seçilir)
+4) İstemci olarak `telnet 127.0.0.1 6666` veya `nc 127.0.0.1 6666` ile bağlanıp komut gönder:
+   - `SET <id> <mesaj>`
+   - `GET <id>`
+
+## 🤝 Katkı
+
+- Forkla ve yeni bir branch aç.
+- Kod stilini ve mevcut paket yapısını koru; gereksiz artefakt ekleme.
+- Değişiklikleri kapsayan kısa test/örnek akış paylaş (komutlar veya log çıktısı yeterli).
+- Anlamlı commit mesajlarıyla PR aç; neyi neden değiştirdiğini özetle.
+
 
 ## 1. Aşama – TCP SET / GET (Bitti ✅)
 
