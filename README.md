@@ -6,7 +6,7 @@ Distributed-Disk-Registery (gRPC + TCP)
 
 # Dağıtık Disk Kayıt Sistemi (gRPC + TCP, Hata Toleranslı)
 
-Bu proje, Sistem Programlama dersi kapsamında dört kişilik ekibimiz (**Rasha Muhammed Ali**,  **Abdullah Fawzi Saad AL RAYYIS**,  **elharis halef elhammedi**  ve **Habib Sultani**) tarafından geliştirilen, gRPC + TCP tabanlı, hata toleranslı dağıtık bir mesaj/abonelik sistemi şablonudur. Lider düğüm TCP üzerinden gelen SET/GET komutlarını alır, gRPC ile replika düğümlere dağıtır, mesajları diske yazar ve tolerans değerine göre üyeler arası yükü dengeler; üyeler dinamik olarak ağa katılıp ayrılabilir ve crash senaryolarında dahi mesajları ayakta kalan kopyalardan geri okuyabilir.
+Bu proje, Sistem Programlama dersi kapsamında dört kişilik ekibimiz (**Rasha Muhammed Ali**,  **Abdullah Fawzi Saad AL RAYYIS**,  **Elharis halef elhammedi**  ve **Habib Sultani**) tarafından geliştirilen, gRPC + TCP tabanlı, hata toleranslı dağıtık bir mesaj/abonelik sistemi şablonudur. Lider düğüm TCP üzerinden gelen SET/GET komutlarını alır, gRPC ile replika düğümlere dağıtır, mesajları diske yazar ve tolerans değerine göre üyeler arası yükü dengeler; üyeler dinamik olarak ağa katılıp ayrılabilir ve crash senaryolarında dahi mesajları ayakta kalan kopyalardan geri okuyabilir.
 
 ## 📁 Proje Yapısı
 
@@ -73,7 +73,7 @@ Adımlar:
   * [x] `CommandParser` implementasyonu  
     (SET / GET protokolü)
 
-* **Haris**
+* **Elharis**
   * [x] `CommandParser`’ın TCP server’a entegrasyonu
 
 * **Rasha**
@@ -109,7 +109,7 @@ Adımlar:
 
 ### Görev Dağılımı
 
-* **Haris**
+* **Elharis**
   * [x] SET komutu için disk yazma (write) mantığının uygulanması
 
 * **Habib**
@@ -234,7 +234,7 @@ Members:
 * **Habib**
   * [x] StorageService server iskeleti (StorageServiceImpl, disk-backed)
 
-* **Haris**
+* **Elharis**
   * [x] gRPC storage testi ve dokümantasyon (Stage 3)
 
 ### Kod/Proto Durumu
@@ -305,7 +305,7 @@ Members:
 * **Habib**
   * [x] tolerance.conf okuyucusunu kodla.
 
-* **Haris**
+* **Elharis**
   * [x] 1 ve 2 tolerans seviyeleri için replika seçimini gerçekleştir.
 
 * **Abdullah**
@@ -615,7 +615,7 @@ TCP> SET 200 hello  =>  OK
 * **Habib**
   * [x] Track per-member message count.
 
-* **Haris**
+* **Elharis**
   * [x] Test load balancing and document results.
 
 
@@ -678,7 +678,7 @@ TCP> SET 200 hello  =>  OK
 * **Habib**
   * [x] Handle crashed members during gRPC calls.
 
-* **Haris**
+* **Elharis**
   * [x] Implement retry and failover for GET.
 
 * **Abdullah**
