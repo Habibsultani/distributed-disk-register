@@ -579,4 +579,17 @@ TCP> SET 200 hello  =>  OK
   Bu Aralık dışında bir değer verilirse tolerans normalize edilir.
 ![Test Senaryosu 3 Çalışma Kanıtı](images/test12.png)
 
+#### Test Senaryosu 4
+* TOLERANCE=2
+* Çok sayıda SET sonrası üyeler arası yük mümkün olduğunca dengeli olsun
+* 1000 SET icin
+![Test Senaryosu 3 Çalışma Kanıtı](images/senaryo_4.png)
+
+#### Test Senaryosu 5
+* TOLERANCE=3
+* Çok sayıda SET sonrası üyeler arası yük mümkün olduğunca dengeli olsun
+* 1000 SET icin
+![Test Senaryosu 3 Çalışma Kanıtı](images/senaryo_5.png)
+
+
 ---
