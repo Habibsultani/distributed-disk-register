@@ -809,3 +809,15 @@ Message counts:
  - 127.0.0.1:5560 -> 1 message
 ======================================
 ```
+
+---
+
+## Proje Hakkında Önemli Notlar
+
+### Threading Review
+
+Bu projede aynı anda birden fazla istemci ve üye node ile iletişim kurulduğu için, işlemlerin birbirini bloklamaması adına threading yaklaşımı kullanıldı. Leader tarafında TCP üzerinden gelen her yeni client bağlantısı ayrı bir thread üzerinde ele alınıyor; böylece bir istemcinin uzun süren SET/GET isteği diğer istemcileri bekletmiyor. gRPC tarafında ise server zaten concurrent istekleri destekliyor; ek olarak periyodik işler (ör. family çıktısını yazdırma ve health-check) ScheduledExecutorService ile ayrı bir zamanlayıcı thread’inde çalıştırılıyor. Bu sayede hem sürekli çalışan arka plan kontrolleri ana iş akışını yavaşlatmıyor, hem de crash/failover senaryolarında sistem tepki verebilir kalıyor.
+
+
+
+
