@@ -818,6 +818,8 @@ Message counts:
 
 Bu projede aynı anda birden fazla istemci ve üye node ile iletişim kurulduğu için, işlemlerin birbirini bloklamaması adına threading yaklaşımı kullanıldı. Leader tarafında TCP üzerinden gelen her yeni client bağlantısı ayrı bir thread üzerinde ele alınıyor; böylece bir istemcinin uzun süren SET/GET isteği diğer istemcileri bekletmiyor. gRPC tarafında ise server zaten concurrent istekleri destekliyor; ek olarak periyodik işler (ör. family çıktısını yazdırma ve health-check) ScheduledExecutorService ile ayrı bir zamanlayıcı thread’inde çalıştırılıyor. Bu sayede hem sürekli çalışan arka plan kontrolleri ana iş akışını yavaşlatmıyor, hem de crash/failover senaryolarında sistem tepki verebilir kalıyor.
 
+### IO Optimization
 
+Disk IO tarafında amaç, mesajların kalıcı olarak saklanmasını sağlarken gereksiz okuma/yazma maliyetlerini azaltmaktı. Bunun için GET sırasında önce leader’ın local disk’inde mesajın olup olmadığı kontrol ediliyor; local’de bulunursa doğrudan diskten okunuyor (local hit). Local’de yoksa (local miss) replication/mapping bilgisi kullanılarak üyelerden okunuyor ve gereksiz tekrar denemelerden kaçınılıyor. Dosya işlemlerinde try-with-resources yaklaşımıyla kaynaklar doğru kapatılıyor, metin okuma/yazmada UTF-8 kullanılarak tutarlı çıktı elde ediliyor. Ayrıca sistemin “mapping + failover” mantığı sayesinde, tek bir node’un diskine bağımlı kalınmıyor; bu hem performansı hem de fault-tolerance davranışını güçlendiriyor.
 
 
