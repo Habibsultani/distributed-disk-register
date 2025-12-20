@@ -527,7 +527,39 @@ TCP> SET 200 hello  =>  OK
 
 ## 5. Aşama – Hata Toleransı n (Genel Hâl) ve Load Balancing (Bitti ✅)
 
-...
+**Amaç:** Tolerance=1,2,3,…,7 için genel çözüm + dengeli dağılım.
+
+* [ ] `tolerance.conf` içindeki değeri **yapılandırılabilir** hale getirin (1..7)
+* [ ] Test senaryoları:
+
+  * Tolerance=2, 5 üye → her mesaj 2 üyeye gitsin
+  * Tolerance=3, 7 üye → her mesaj 3 üyeye gitsin
+* [ ] Mesaj dağılımı:
+
+  * `message_id` veya **round-robin** ile üyeleri seçebilirsiniz
+  * Amaç: Çok sayıda SET sonrası üyeler arası yük mümkün olduğunca dengeli olsun
+  * Bunu ölçmek için:
+
+    * [ ] Sonda her üyenin kaç mesaj sakladığını ekrana yazdıran fonksiyon ekleyin
+* [ ] Test dokümantasyonu:
+
+  * 1000 SET sonrası 2 set üye için 500-500 civarı mesaj dağılımı
+  * 9000 SET sonrası iki üçlü grup için 4500-4500 civarı dağılım
+
+ ### Görev Dağılımı
+
+* **Rasha**
+  * [x] Generalize tolerance handling (1..7).
+
+* **Abdullah**
+  * [x] Implement load-balanced replica selection.
+
+* **Habib**
+  * [x] Track per-member message count.
+
+* **Haris**
+  * [x] Test load balancing and document results.
+
 
 ### Test Senaryoları ve Kanıtları
 
