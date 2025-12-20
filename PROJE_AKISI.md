@@ -54,12 +54,6 @@ Adımlar:
    - `SET <id> <mesaj>`
    - `GET <id>`
 
-## 🤝 Katkı
-
-- Forkla ve yeni bir branch aç.
-- Kod stilini ve mevcut paket yapısını koru; gereksiz artefakt ekleme.
-- Değişiklikleri kapsayan kısa test/örnek akış paylaş (komutlar veya log çıktısı yeterli).
-- Anlamlı commit mesajlarıyla PR aç; neyi neden değiştirdiğini özetle.
 
 
 ## 1. Aşama – TCP SET / GET (Bitti ✅)
@@ -893,4 +887,12 @@ Code Cleanup & Refactor aşamasında hedef, mevcut kodu daha okunabilir, sürdü
 ### Final README & Submission Prep
 
 Final README & Submission Prep aşamasında amaç, repo’yu teslim edilebilir hâle getirmek: güncel durumu, kurulum/çalıştırma adımlarını, konfigürasyon (örn. tolerance.conf), çoklu node başlatma ve örnek SET/GET akışlarını README’ye açık ve adım adım eklemek; bilinen kısıtlar ve test talimatlarını (tolerance=1/2/3 senaryoları, crash testleri) belirtmek; lisans, ekip bilgisi ve versiyon notlarını tamamlamak; gereksiz dosyaları temizleyip .gitignore’u doğrulamak; son bir derleme/test turu yapıp artefaktları repo’ya eklemeden temizlemektir. Böylece değerlendirici, projeyi hızla kurup test edebilir ve teslim paketi tutarlı olur.
+
+
+## 🤝 Katkı
+
+- Forkla ve yeni bir branch aç.
+- Kod stilini ve mevcut paket yapısını koru; gereksiz artefakt ekleme.
+- Değişiklikleri kapsayan kısa test/örnek akış paylaş (komutlar veya log çıktısı yeterli).
+- Anlamlı commit mesajlarıyla PR aç; neyi neden değiştirdiğini özetle.
 
