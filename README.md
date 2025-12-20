@@ -14,8 +14,8 @@ Bu proje, Sistem Programlama dersi kapsamında dört kişilik ekibimiz (**Rasha 
 distributed-disk-register/
 │
 ├── LICENSE
-├── PROJE_AKISI.md
 ├── README.md
+├── TEACHER_README.md
 ├── TO-DOs.md
 ├── pom.xml
 ├── tolerance.conf
