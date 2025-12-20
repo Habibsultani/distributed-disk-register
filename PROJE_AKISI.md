@@ -591,11 +591,44 @@ TCP> SET 200 hello  =>  OK
 * 1000 SET icin
 ![Test Senaryosu 3 Çalışma Kanıtı](images/senaryo_5.png)
 
------------
+---
 
 ## 6. Aşama  – Crash Senaryoları ve Recovery (Bitti ✅)
 
----
+**Amaç:** Test senaryosu 1 & 2’de tarif edilen crash durumlarını simüle etmek.
+
+* [x] Üye proceslerinden birini manuel kapatın (kill, terminal kapama)
+* [x] Lider:
+
+  * GET sırasında crash olmuş üyeye bağlanmaya çalışırken exception aldığında:
+
+    * O üyeyi “dead” işaretlesin (veya listeden çıkarsın)
+    * Listedeki diğer üye(ler)den mesajı okumayı denesin
+* [x] Test 1:
+
+  * Tolerance=2, 4 üye
+  * Mesaj id 500 → üye 3 ve 4’te kayıtlı olsun
+  * Üye 3’ü kapat → lider GET 500 isteğini üye 4’ten çekebiliyor mu?
+* [x] Test 2:
+
+  * Tolerance=3, 6 üye
+  * Mesaj id 4501 → üye 3,5,6’da
+  * 1 veya 2 üye crash olsa bile, hayatta kalan son üyeden GET yapılabiliyor mu?
+
+### Görev Dağılımı
+
+* **Habib**
+  * [x] Handle crashed members during gRPC calls.
+
+* **Haris**
+  * [x] Implement retry and failover for GET.
+
+* **Abdullah**
+  * [x] Mark dead members and update metadata.
+
+* **Rasha**
+  * [x] Simulate crashes and document recovery tests.
+
 
 ### Test Senaryoları ve Kanıtları
 
@@ -607,7 +640,172 @@ TCP> SET 200 hello  =>  OK
 #### Test Senaryosu 2
 * TOLERANCE=2
 * failover çalışıyor: 5557 düştükten sonra lider (5555) yine GET 87 için değeri döndürmüş.
-![Test Senaryosu 1 Çalışma Kanıtı](images/6_senaryo_2.png)
+![Test Senaryosu 2 Çalışma Kanıtı](images/6_senaryo_2.png)
 
+#### Test Senaryosu 3
+* TOLERANCE=2
+* 4 üye aç
+* SET 500 test yap -> 500.msg sil -> Diğer iki üyede hala tutulmaktadır.
+  * GET 500 -> Diğer iki üyenin birinden çeker.
+  * Üyelerden (fotodaki pencerelerden) birini kapat -> GET 500 yap -> Hayatta kalan üyeden çeker.
+![Test Senaryosu 3 Çalışma Kanıtı](images/6_senaryo_3.png)
 
+##### Loglar
 
+```client outputs
+SET 500 test
+OK
+GET 500
+test
+```
+
+```terminal outputs
+Node started on 127.0.0.1:5555
+Configured tolerance level: 2
+Leader listening for text on TCP 127.0.0.1:6666
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-20T17:11:55.246957500
+Members:
+ - 127.0.0.1:5555 (me)
+======================================
+New TCP client connected: /127.0.0.1:52575
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-20T17:12:05.237101900
+Members:
+ - 127.0.0.1:5556
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5559
+ - 127.0.0.1:5558
+ - 127.0.0.1:5557
+======================================
+[REPL] Store OK on 127.0.0.1:5557
+[REPL] Store OK on 127.0.0.1:5559
+[MAPPING] id=500 -> 127.0.0.1:5555, 127.0.0.1:5557, 127.0.0.1:5559
+TCP> SET 500 test  =>  OK
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-20T17:12:35.235191300
+Members:
+ - 127.0.0.1:5556
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5559
+ - 127.0.0.1:5558
+ - 127.0.0.1:5557
+Message counts:
+ - 127.0.0.1:5556 -> 0 messages
+ - 127.0.0.1:5555 -> 1 message
+ - 127.0.0.1:5559 -> 1 message
+ - 127.0.0.1:5558 -> 0 messages
+ - 127.0.0.1:5557 -> 1 message
+======================================
+Node 127.0.0.1:5557 unreachable, removing from family
+[GET] Local disk miss id=500, trying members...
+[GET] Trying mapped replicas for id=500 (count=2)
+[GET] Retrieved from 127.0.0.1:5559
+TCP> GET 500  =>  test
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-20T17:12:45.240626700
+Members:
+ - 127.0.0.1:5556
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5559
+ - 127.0.0.1:5558
+Message counts:
+ - 127.0.0.1:5556 -> 0 messages
+ - 127.0.0.1:5555 -> 1 message
+ - 127.0.0.1:5559 -> 1 message
+ - 127.0.0.1:5558 -> 0 messages
+======================================
+```
+
+#### Test Senaryosu 4
+* TOLERANCE=3
+* 6 üye aç
+* SET 4501 test yap -> 4501.msg sil -> Diğer üç üyede hala tutulmaktadır.
+  * GET 4501 -> Diğer üç üyenin birinden çeker.
+  * Üyelerden (fotodaki pencerelerden) birini / ikisini kapat -> GET 4501 yap -> Hayatta kalan üyeden çeker.
+![Test Senaryosu 4 Çalışma Kanıtı](images/6_senaryo_4.png)
+
+##### Loglar
+
+```client outputs
+SET 4501 test
+OK
+GET 4501
+test
+```
+
+```terminal outputs
+Node started on 127.0.0.1:5555
+Configured tolerance level: 3
+Leader listening for text on TCP 127.0.0.1:6666
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-20T17:06:04.686077300
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+======================================
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-20T17:06:14.684199900
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5557
+ - 127.0.0.1:5558
+ - 127.0.0.1:5559
+ - 127.0.0.1:5560
+======================================
+New TCP client connected: /127.0.0.1:54921
+[REPL] Store OK on 127.0.0.1:5557
+[REPL] Store OK on 127.0.0.1:5560
+[REPL] Store OK on 127.0.0.1:5559
+[MAPPING] id=4501 -> 127.0.0.1:5555, 127.0.0.1:5557, 127.0.0.1:5560, 127.0.0.1:5559
+TCP> SET 4501 test  =>  OK
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-20T17:06:24.696553
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5561
+ - 127.0.0.1:5557
+ - 127.0.0.1:5558
+ - 127.0.0.1:5559
+ - 127.0.0.1:5560
+Message counts:
+ - 127.0.0.1:5555 -> 1 message
+ - 127.0.0.1:5556 -> 0 messages
+ - 127.0.0.1:5561 -> 0 messages
+ - 127.0.0.1:5557 -> 1 message
+ - 127.0.0.1:5558 -> 0 messages
+ - 127.0.0.1:5559 -> 1 message
+ - 127.0.0.1:5560 -> 1 message
+======================================
+Node 127.0.0.1:5557 unreachable, removing from family
+Node 127.0.0.1:5559 unreachable, removing from family
+[GET] Local disk miss id=4501, trying members...
+[GET] Trying mapped replicas for id=4501 (count=2)
+[GET] Retrieved from 127.0.0.1:5560
+TCP> GET 4501  =>  test
+======================================
+Family at 127.0.0.1:5555 (me)
+Time: 2025-12-20T17:07:34.681708600
+Members:
+ - 127.0.0.1:5555 (me)
+ - 127.0.0.1:5556
+ - 127.0.0.1:5561
+ - 127.0.0.1:5558
+ - 127.0.0.1:5560
+Message counts:
+ - 127.0.0.1:5555 -> 1 message
+ - 127.0.0.1:5556 -> 0 messages
+ - 127.0.0.1:5561 -> 0 messages
+ - 127.0.0.1:5558 -> 0 messages
+ - 127.0.0.1:5560 -> 1 message
+======================================
+```
