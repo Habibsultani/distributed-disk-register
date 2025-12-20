@@ -8,6 +8,39 @@ Distributed-Disk-Registery (gRPC + TCP)
 
 Bu proje, Sistem Programlama dersi kapsamında dört kişilik ekibimiz (Rasha, Abdullah, Haris ve Habib) tarafından geliştirilen, gRPC + TCP tabanlı, hata toleranslı dağıtık bir mesaj/abonelik sistemi şablonudur. Lider düğüm TCP üzerinden gelen SET/GET komutlarını alır, gRPC ile replika düğümlere dağıtır, mesajları diske yazar ve tolerans değerine göre üyeler arası yükü dengeler; üyeler dinamik olarak ağa katılıp ayrılabilir ve crash senaryolarında dahi mesajları ayakta kalan kopyalardan geri okuyabilir.
 
+## 📁 Proje Yapısı
+
+```
+distributed-disk-register/
+│
+├── LICENSE
+├── PROJE_AKISI.md
+├── README.md
+├── TO-DOs.md
+├── pom.xml
+├── tolerance.conf
+├── images/
+├── messages/
+├── src
+│   └── main
+│       ├── java/com/example/family/
+│       │       ├── FamilyServiceImpl.java
+│       │       ├── NodeMain.java
+│       │       ├── NodeRegistry.java
+│       │       ├── StorageServiceImpl.java
+│       │       ├── ToleranceConfig.java
+│       │       └── commands/
+│       │               ├── Command.java
+│       │               ├── CommandParser.java
+│       │               ├── GetCommand.java
+│       │               ├── InvalidCommand.java
+│       │               └── SetCommand.java
+│       └── proto/
+│               └── family.proto
+└── target/                  (derleme çıktıları)
+
+```
+
 
 ## 1. Aşama – TCP SET / GET (Bitti ✅)
 
