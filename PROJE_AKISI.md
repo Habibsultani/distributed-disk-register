@@ -650,6 +650,8 @@ TCP> SET 200 hello  =>  OK
   * Üyelerden (fotodaki pencerelerden) birini kapat -> GET 500 yap -> Hayatta kalan üyeden çeker.
 ![Test Senaryosu 3 Çalışma Kanıtı](images/6_senaryo_3.png)
 
+##### Loglar
+
 ```client outputs
 SET 500 test
 OK
@@ -726,6 +728,8 @@ Message counts:
   * GET 4501 -> Diğer üç üyenin birinden çeker.
   * Üyelerden (fotodaki pencerelerden) birini / ikisini kapat -> GET 4501 yap -> Hayatta kalan üyeden çeker.
 ![Test Senaryosu 4 Çalışma Kanıtı](images/6_senaryo_4.png)
+
+##### Loglar
 
 ```client outputs
 SET 4501 test
