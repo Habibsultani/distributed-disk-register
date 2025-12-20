@@ -591,10 +591,11 @@ TCP> SET 200 hello  =>  OK
 * 1000 SET icin
 ![Test Senaryosu 3 Çalışma Kanıtı](images/senaryo_5.png)
 
+-----------
 
 ## 6. Aşama  – Crash Senaryoları ve Recovery (Bitti ✅)
 
------------
+---
 
 ### Test Senaryoları ve Kanıtları
 
