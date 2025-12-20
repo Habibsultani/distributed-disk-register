@@ -54,7 +54,7 @@ Adımlar:
    - `SET <id> <mesaj>`
    - `GET <id>`
 
-
+## Bu projeyi şu adımlarla geliştirdik🎉:
 
 ## 1. Aşama – TCP SET / GET (Bitti ✅)
 
