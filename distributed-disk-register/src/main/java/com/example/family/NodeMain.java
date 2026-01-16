@@ -14,9 +14,13 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -48,9 +52,57 @@ public class NodeMain {
 
     private static final int START_PORT = 5555;
     private static final int PRINT_INTERVAL_SECONDS = 10;
+    private static final int HEALTH_FAILURE_THRESHOLD = 10;
+    private static final int HEALTH_CHECK_DEADLINE_SECONDS = 5;
+    private static final int RPC_FAILURE_THRESHOLD = 10;
+    private static final int RPC_DEADLINE_SECONDS = 5;
+    private static final int REPL_EXEC_THREADS = 4;
+    private static final int REPL_QUEUE_CAPACITY = 2000;
 
     private static final Path TOLERANCE_CONF_PATH = resolveToleranceConfPath();
     private static final int TOLERANCE = normalizeTolerance(ToleranceConfig.load(TOLERANCE_CONF_PATH));
+    private static final ConcurrentHashMap<NodeInfo, Integer> HEALTH_FAILURES = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<NodeInfo, Integer> RPC_FAILURES = new ConcurrentHashMap<>();
+
+    // gRPC channels: reuse instead of creating a new one for every RPC
+    private static final ConcurrentHashMap<NodeInfo, ManagedChannel> CHANNEL_CACHE = new ConcurrentHashMap<>();
+
+    private static ManagedChannel channelFor(NodeInfo member) {
+        return CHANNEL_CACHE.computeIfAbsent(member, m ->
+                ManagedChannelBuilder.forAddress(m.getHost(), m.getPort())
+                        .usePlaintext()
+                        .build()
+        );
+    }
+
+    private static void dropMember(NodeInfo dead, NodeRegistry registry, String reason) {
+        if (dead == null) return;
+
+        // remove from family
+        registry.remove(dead);
+
+        // remove from message mapping
+        removeMemberFromAllMappings(dead);
+
+        // clear failure counters
+        HEALTH_FAILURES.remove(dead);
+        RPC_FAILURES.remove(dead);
+
+        // shutdown cached channel
+        ManagedChannel ch = CHANNEL_CACHE.remove(dead);
+        if (ch != null) ch.shutdownNow();
+
+        System.out.printf("Node %s:%d removed from family (%s)%n",
+                dead.getHost(), dead.getPort(), reason);
+    }
+
+    private static final ExecutorService REPL_EXEC = new ThreadPoolExecutor(
+            REPL_EXEC_THREADS,
+            REPL_EXEC_THREADS,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(REPL_QUEUE_CAPACITY),
+            new ThreadPoolExecutor.CallerRunsPolicy());
 
     public static void main(String[] args) throws Exception {
         String host = "127.0.0.1";
@@ -142,18 +194,40 @@ public class NodeMain {
                             // leader kendinde zaten yazdı (cmd.execute ile)
                             trackStoredAt(id, self);
 
-                            int need = TOLERANCE; // kaç replika
-
+                            int need = TOLERANCE; // leader HARIC kac replika istiyoruz
                             List<NodeInfo> targets = selectReplicas(registry, self, need, id);
 
                             if (targets.size() < need) {
-                                finalResponse = "ERROR";
-                                System.out.println("[REPL] Not enough members. need=" + need + " available=" + targets.size());
+                                // Ailede yeterli hedef bile yok -> kesin hata
+                                System.out.println("[REPL] Not enough members. need=" + need
+                                        + " available=" + targets.size() + " (rejecting)");
+                                finalResponse = "ERROR NOT_ENOUGH_MEMBERS need=" + need + " available=" + targets.size();
                             } else {
-                                boolean allOk = replicateStoreToTargets(id, message, targets, registry);
-                                finalResponse = allOk ? "OK" : "ERROR";
-                                printMappingFor(id);
+                                // Need kadar replika yazimini SENKRON kontrol et (gercek hata olunca ERROR artsin)
+                                int okCount = 0;
+
+                                StoredMessage sm = StoredMessage.newBuilder()
+                                        .setId(id)
+                                        .setText(message)
+                                        .build();
+
+                                for (NodeInfo t : targets) {
+                                    boolean ok = storeOnMember(t, sm, registry);
+                                    if (ok) {
+                                        okCount++;
+                                        trackStoredAt(id, t);
+                                    }
+                                }
+
+                                if (okCount < need) {
+                                    System.out.println("[REPL] Replication failed. need=" + need + " ok=" + okCount);
+                                    finalResponse = "ERROR REPL_FAILED need=" + need + " ok=" + okCount;
+                                } else {
+                                    finalResponse = "OK";
+                                }
                             }
+
+
                         } catch (NumberFormatException e) {
                             finalResponse = "ERROR";
                         }
@@ -175,7 +249,7 @@ public class NodeMain {
                             String localDisk = readFromLocalDisk(id);
                             if (localDisk != null) {
                                 System.out.println("[GET] Local disk hit id=" + id);
-                                finalResponse = localDisk;
+                                finalResponse = "OK " + localDisk;
                             } else {
                                 System.out.println("[GET] Local disk miss id=" + id + ", trying members...");
                                 String fromMember = retrieveFromMembersUsingMapping(id, self, registry);
@@ -185,9 +259,12 @@ public class NodeMain {
                                 }
                                 if (fromMember == null) {
                                     System.out.println("[GET] NOT_FOUND id=" + id + " (not on local disk and not on any member)");
+                                    finalResponse = "OK NOT_FOUND";   // yoksa hata değil
+                                } else {
+                                    finalResponse = "OK " + fromMember;
                                 }
-                                finalResponse = (fromMember != null) ? fromMember : "NOT_FOUND";
                             }
+
 
                         } catch (NumberFormatException e) {
                             finalResponse = "ERROR";
@@ -198,7 +275,11 @@ public class NodeMain {
                 }
 
                 out.println(finalResponse);
-                System.out.println("TCP> " + text + "  =>  " + finalResponse);
+                System.out.println(
+                        "TCP> " + (text.length() > 120 ? text.substring(0, 120) + "..." : text)
+                                + "  =>  " + (finalResponse.length() > 120 ? finalResponse.substring(0, 120) + "..." : finalResponse)
+                );
+
             }
 
         } catch (IOException e) {
@@ -277,60 +358,56 @@ public class NodeMain {
     // Replication
     // =========================================================
 
-    private static boolean replicateStoreToTargets(int id, String message, List<NodeInfo> targets, NodeRegistry registry) {
-        StoredMessage sm = StoredMessage.newBuilder()
-                .setId(id)
-                .setText(message)
-                .build();
-
-        boolean allOk = true;
-
-        for (NodeInfo t : targets) {
-            boolean ok = storeOnMember(t, sm, registry);
-            if (ok) {
-                trackStoredAt(id, t);
-            } else {
-                allOk = false;
-            }
+    private static void enqueueReplication(int id, String message, List<NodeInfo> targets, NodeRegistry registry) {
+        if (targets == null || targets.isEmpty()) {
+            return;
         }
 
-        return allOk;
+        for (NodeInfo t : targets) {
+            REPL_EXEC.execute(() -> {
+                StoredMessage sm = StoredMessage.newBuilder()
+                        .setId(id)
+                        .setText(message)
+                        .build();
+                boolean ok = storeOnMember(t, sm, registry);
+                if (ok) {
+                    trackStoredAt(id, t);
+                }
+            });
+        }
     }
 
     private static boolean storeOnMember(NodeInfo member, StoredMessage msg, NodeRegistry registry) {
-        ManagedChannel channel = null;
         try {
-            channel = ManagedChannelBuilder
-                    .forAddress(member.getHost(), member.getPort())
-                    .usePlaintext()
-                    .build();
+            ManagedChannel channel = channelFor(member);
 
-            StorageServiceGrpc.StorageServiceBlockingStub stub = StorageServiceGrpc.newBlockingStub(channel);
+            StorageServiceGrpc.StorageServiceBlockingStub stub = StorageServiceGrpc
+                    .newBlockingStub(channel)
+                    .withDeadlineAfter(RPC_DEADLINE_SECONDS, TimeUnit.SECONDS);
+
             StoreResult res = stub.store(msg);
 
             if (res.getOk()) {
-                System.out.println("[REPL] Store OK on " + member.getHost() + ":" + member.getPort());
+                // success => clear failures
+                RPC_FAILURES.remove(member);
                 return true;
-            } else {
-                System.out.println("[REPL] Store failed on " + member.getHost() + ":" + member.getPort()
-                        + " error=" + res.getError());
-                return false;
             }
+
+            // not-ok => count as failure
+            trackRpcFailure(member, registry, "store returned ok=false");
+            return false;
 
         } catch (StatusRuntimeException e) {
             System.out.println("[REPL] Store RPC error on " + member.getHost() + ":" + member.getPort()
                     + " status=" + e.getStatus());
-            registry.remove(member);
-            removeMemberFromAllMappings(member);
+            trackRpcFailure(member, registry, "RPC " + e.getStatus().getCode());
             return false;
+
         } catch (Exception e) {
             System.out.println("[REPL] Store exception on " + member.getHost() + ":" + member.getPort()
                     + " msg=" + e.getMessage());
-            registry.remove(member);
-            removeMemberFromAllMappings(member);
+            trackRpcFailure(member, registry, "EX " + e.getClass().getSimpleName());
             return false;
-        } finally {
-            if (channel != null) channel.shutdownNow();
         }
     }
 
@@ -374,37 +451,35 @@ public class NodeMain {
     }
 
     private static String retrieveFromMember(NodeInfo member, int id, NodeRegistry registry) {
-        ManagedChannel channel = null;
         try {
-            channel = ManagedChannelBuilder
-                    .forAddress(member.getHost(), member.getPort())
-                    .usePlaintext()
-                    .build();
+            ManagedChannel channel = channelFor(member);
 
-            StorageServiceGrpc.StorageServiceBlockingStub stub = StorageServiceGrpc.newBlockingStub(channel);
+            StorageServiceGrpc.StorageServiceBlockingStub stub = StorageServiceGrpc
+                    .newBlockingStub(channel)
+                    .withDeadlineAfter(RPC_DEADLINE_SECONDS, TimeUnit.SECONDS);
 
             StoredMessage got = stub.retrieve(MessageId.newBuilder().setId(id).build());
-
             String text = got.getText();
             if (text == null || text.isEmpty()) return null;
 
-            System.out.println("[GET] Retrieved from " + member.getHost() + ":" + member.getPort());
+            RPC_FAILURES.remove(member);
             return text;
 
         } catch (StatusRuntimeException e) {
+            // NOT_FOUND normal: o node’da mesaj yok, bu "hata" değil.
+            if (e.getStatus().getCode() == io.grpc.Status.Code.NOT_FOUND) {
+                return null;
+            }
+
             System.out.println("[GET] Retrieve RPC error on " + member.getHost() + ":" + member.getPort()
                     + " status=" + e.getStatus());
-            registry.remove(member);
-            removeMemberFromAllMappings(member);
+            trackRpcFailure(member, registry, "retrieve RPC " + e.getStatus().getCode());
             return null;
         } catch (Exception e) {
             System.out.println("[GET] Retrieve exception on " + member.getHost() + ":" + member.getPort()
                     + " msg=" + e.getMessage());
-            registry.remove(member);
-            removeMemberFromAllMappings(member);
+            trackRpcFailure(member, registry, "retrieve EX " + e.getClass().getSimpleName());
             return null;
-        } finally {
-            if (channel != null) channel.shutdownNow();
         }
     }
 
@@ -501,30 +576,34 @@ public class NodeMain {
             for (NodeInfo n : members) {
                 if (sameMember(n, self)) continue;
 
-                ManagedChannel channel = null;
                 try {
-                    channel = ManagedChannelBuilder
-                            .forAddress(n.getHost(), n.getPort())
-                            .usePlaintext()
-                            .build();
+                    ManagedChannel channel = channelFor(n);
 
-                    FamilyServiceGrpc.FamilyServiceBlockingStub stub = FamilyServiceGrpc.newBlockingStub(channel);
+                    FamilyServiceGrpc.FamilyServiceBlockingStub stub = FamilyServiceGrpc.newBlockingStub(channel)
+                            .withDeadlineAfter(HEALTH_CHECK_DEADLINE_SECONDS, TimeUnit.SECONDS);
                     stub.getFamily(Empty.newBuilder().build());
 
+                    HEALTH_FAILURES.remove(n);
+                    RPC_FAILURES.remove(n); // healthy => clear rpc failures too
                 } catch (Exception e) {
-                    System.out.printf("Node %s:%d unreachable, removing from family%n", n.getHost(), n.getPort());
-                    registry.remove(n);
-
-                    // leader mapping'i de temizlesin
-                    if (self.getPort() == START_PORT) {
-                        removeMemberFromAllMappings(n);
+                    int failures = HEALTH_FAILURES.merge(n, 1, Integer::sum);
+                    if (failures >= HEALTH_FAILURE_THRESHOLD) {
+                        dropMember(n, registry, "health unreachable failures=" + failures);
                     }
-                } finally {
-                    if (channel != null) channel.shutdownNow();
                 }
+
+
             }
         }, 5, 10, TimeUnit.SECONDS);
     }
+
+    private static void trackRpcFailure(NodeInfo member, NodeRegistry registry, String why) {
+        int failures = RPC_FAILURES.merge(member, 1, Integer::sum);
+        if (failures >= RPC_FAILURE_THRESHOLD) {
+            dropMember(member, registry, "RPC failures=" + failures + " (" + why + ")");
+        }
+    }
+
 
     private static Map<NodeInfo, Integer> computeMemberMessageCounts() {
         Map<NodeInfo, Integer> counts = new HashMap<NodeInfo, Integer>();
